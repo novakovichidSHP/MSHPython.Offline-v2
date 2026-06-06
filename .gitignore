@@ -8,5 +8,6 @@
 *.gz
 .downloads/
 .runtime/
+.codex_tmp/
 __pycache__/
 *.pyc
