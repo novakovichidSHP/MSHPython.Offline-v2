@@ -1987,8 +1987,23 @@ class PortableIDE(tk.Tk):
 
         run_context = self._prepare_run_context(tab)
         if not run_context:
+            # Перезапуск отменён (диалог сохранения отклонён) — снимаем
+            # «завис» кнопки: _restart_pending уже False, _is_running() False,
+            # поэтому явно обновляем контролы чтобы кнопка стала «Запустить».
+            self._update_run_controls()
             return
         script_path, runtime_dir = run_context
+
+        # Сбрасываем состояние поля ввода от прошлой сессии, чтобы синяя
+        # подсветка «Ожидание ввода» не переходила в новый запуск.
+        self._waiting_for_input = False
+        self.input_label.configure(text='Ввод:')
+        self.input_text.configure(
+            background=self.theme['input_bg'],
+            foreground=self.theme['input_fg'],
+            relief='solid',
+            bd=2,
+        )
 
         self.step_mode = bool(step_mode)
         self.step_abort = False
@@ -2040,6 +2055,14 @@ class PortableIDE(tk.Tk):
                 self.step_next_button.pack_forget()
 
     def _run_in_console(self, python_exe: str, script_path: Path, runtime_dir: Path | None) -> None:
+        # Очищаем очередь ввода от предыдущей сессии: если старая программа
+        # запрашивала input() и пользователь что-то набрал, эти данные не
+        # должны «просочиться» в новый запуск.
+        while not self.input_queue.empty():
+            try:
+                self.input_queue.get_nowait()
+            except queue.Empty:
+                break
         try:
             env = os.environ.copy()
             if runtime_dir:
@@ -2489,6 +2512,12 @@ class PortableIDE(tk.Tk):
             time.sleep(0.01)
 
     def _run_step_code(self, code: str, script_path: Path, runtime_dir: Path | None) -> None:
+        # Очищаем очередь ввода от предыдущей сессии (аналогично _run_in_console).
+        while not self.input_queue.empty():
+            try:
+                self.input_queue.get_nowait()
+            except queue.Empty:
+                break
         self.inline_running = True
         self.step_abort = False
         self._update_run_controls()

@@ -15,6 +15,14 @@ TAB = object()
 P = ide.PortableIDE
 
 
+class _FakeLabel:
+    def __init__(self): self.text = ''
+    def configure(self, **kw): self.text = kw.get('text', self.text)
+
+class _FakeWidget:
+    def __init__(self): self._cfg = {}
+    def configure(self, **kw): self._cfg.update(kw)
+
 class Fake:
     def __init__(self, running):
         self._running = running
@@ -26,6 +34,10 @@ class Fake:
         self.main_tab = TAB
         self.events = []
         self._budget = 200
+        self._waiting_for_input = False
+        self.input_label = _FakeLabel()
+        self.input_text = _FakeWidget()
+        self.theme = {'input_bg': '#fff', 'input_fg': '#000'}
     # зависимости
     def get_current_tab(self): return TAB
     def _ensure_main_tab(self): return TAB
@@ -117,5 +129,39 @@ f5.tabs_by_frame = {'a': TAB}
 f5.on_exit()
 assert f5._closing is True and 'destroy' in f5.events, 'закрытие не выполнено'
 print('5 on_exit при подтверждении закрывает: OK')
+
+print('\nALL ASSERTIONS PASSED')
+
+
+# --- 6: _start_run вызывает _update_run_controls когда _prepare_run_context → None ---
+import queue as _queue
+f6 = Fake(running=False)
+f6._prepare_run_context = lambda tab: None    # имитируем Cancel в диалоге
+f6._waiting_for_input = False
+f6.step_event = type('E', (), {'clear': lambda self: None})()
+f6._start_run = P._start_run.__get__(f6)
+f6._start_run(TAB, False)
+assert 'controls' in f6.events, '_update_run_controls не вызван при None-контексте'
+print('6 _start_run s None-kontekstom -> _update_run_controls: OK')
+
+# --- 7: _start_run сбрасывает _waiting_for_input и визуальное состояние поля ввода ---
+import queue as _queue
+fake_tab2 = type('T', (), {'get_content': lambda self: 'print(1)'})()
+f7 = Fake(running=False)
+f7._waiting_for_input = True
+f7.input_label.text = '⏳ Ожидание ввода:'
+f7._prepare_run_context = lambda tab: (Path('x.py'), None)
+f7._needs_turtle = lambda tab, sp: False
+f7._run_in_console = lambda *a: None
+f7.input_queue = _queue.Queue()
+f7.step_event = type('E', (), {'clear': lambda self: None})()
+f7.clear_console = lambda: None
+f7._focus_input = lambda: None
+f7._append_output = lambda *a, **kw: None
+f7._start_run = P._start_run.__get__(f7)
+f7._start_run(fake_tab2, False)
+assert f7._waiting_for_input is False, '_waiting_for_input не сброшен'
+assert f7.input_label.text == 'Ввод:', f'input_label не сброшен: {f7.input_label.text!r}'
+print('7 _start_run сбрасывает _waiting_for_input и input_label: OK')
 
 print('\nALL ASSERTIONS PASSED')
