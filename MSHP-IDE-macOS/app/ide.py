@@ -263,6 +263,7 @@ class EditorTab:
         self.text.bind('<Button-5>', self.on_scroll_event)
         self.text.bind('<Configure>', self.on_scroll_event)
         self.text.bind('<Tab>', lambda e: self.app._indent_or_tab(self.text))
+        self.text.bind('<Return>', lambda e: self.app._newline_and_indent(self.text))
 
         self.app.bind_text_shortcuts(self.text)
         self.apply_theme()
@@ -786,31 +787,46 @@ class PortableIDE(tk.Tk):
         self.bind('<Control-Shift-Tab>', lambda _e: self._cycle_tab(-1))
         self.bind('<Control-ISO_Left_Tab>', lambda _e: self._cycle_tab(-1))
         self.protocol('WM_DELETE_WINDOW', self.on_exit)
-        self.bind_all('<Control-n>', lambda _e: self.new_tab(), add=True)
-        self.bind_all('<Control-N>', lambda _e: self.new_tab(), add=True)
-        self.bind_all('<Control-o>', lambda _e: self.open_file(), add=True)
-        self.bind_all('<Control-O>', lambda _e: self.open_file(), add=True)
-        self.bind_all('<Control-s>', lambda _e: self.save_file(), add=True)
-        self.bind_all('<Control-S>', lambda _e: self.save_file(), add=True)
-        self.bind_all('<Control-Shift-s>', lambda _e: self.save_all(), add=True)
-        self.bind_all('<Control-Shift-S>', lambda _e: self.save_all(), add=True)
-        self.bind_all('<Control-w>', lambda _e: self.close_current_tab(), add=True)
-        self.bind_all('<Control-W>', lambda _e: self.close_current_tab(), add=True)
-        self.bind_all('<Control-a>', self._global_select_all, add=True)
-        self.bind_all('<Control-A>', self._global_select_all, add=True)
-        self.bind_all('<Control-c>', self._global_copy, add=True)
-        self.bind_all('<Control-C>', self._global_copy, add=True)
-        self.bind_all('<Control-v>', self._global_paste, add=True)
-        self.bind_all('<Control-V>', self._global_paste, add=True)
-        self.bind_all('<Control-x>', self._global_cut, add=True)
-        self.bind_all('<Control-X>', self._global_cut, add=True)
-        self.bind_all('<Control-z>', self._global_undo, add=True)
-        self.bind_all('<Control-Z>', self._global_undo, add=True)
-        self.bind_all('<Control-y>', self._global_redo, add=True)
-        self.bind_all('<Control-Y>', lambda _e: self._global_redo(), add=True)
-        self.bind_all('<Control-Tab>', lambda _e: self._cycle_tab(1), add=True)
-        self.bind_all('<Control-Shift-Tab>', lambda _e: self._cycle_tab(-1), add=True)
-        self.bind_all('<Control-ISO_Left_Tab>', lambda _e: self._cycle_tab(-1), add=True)
+        self._bind_all_if_supported('<Control-n>', lambda _e: self.new_tab(), add=True)
+        self._bind_all_if_supported('<Control-N>', lambda _e: self.new_tab(), add=True)
+        self._bind_all_if_supported('<Control-o>', lambda _e: self.open_file(), add=True)
+        self._bind_all_if_supported('<Control-O>', lambda _e: self.open_file(), add=True)
+        self._bind_all_if_supported('<Control-s>', lambda _e: self.save_file(), add=True)
+        self._bind_all_if_supported('<Control-S>', lambda _e: self.save_file(), add=True)
+        self._bind_all_if_supported('<Control-Shift-s>', lambda _e: self.save_all(), add=True)
+        self._bind_all_if_supported('<Control-Shift-S>', lambda _e: self.save_all(), add=True)
+        self._bind_all_if_supported('<Control-w>', lambda _e: self.close_current_tab(), add=True)
+        self._bind_all_if_supported('<Control-W>', lambda _e: self.close_current_tab(), add=True)
+        self._bind_all_if_supported('<Control-a>', self._global_select_all, add=True)
+        self._bind_all_if_supported('<Control-A>', self._global_select_all, add=True)
+        if sys.platform == 'darwin':
+            self._bind_all_if_supported('<Command-a>', self._global_select_all, add=True)
+            self._bind_all_if_supported('<Command-A>', self._global_select_all, add=True)
+        self._bind_all_if_supported('<Control-c>', self._global_copy, add=True)
+        self._bind_all_if_supported('<Control-C>', self._global_copy, add=True)
+        self._bind_all_if_supported('<Control-v>', self._global_paste, add=True)
+        self._bind_all_if_supported('<Control-V>', self._global_paste, add=True)
+        self._bind_all_if_supported('<Control-x>', self._global_cut, add=True)
+        self._bind_all_if_supported('<Control-X>', self._global_cut, add=True)
+        self._bind_all_if_supported('<Control-z>', self._global_undo, add=True)
+        self._bind_all_if_supported('<Control-Z>', self._global_undo, add=True)
+        self._bind_all_if_supported('<Control-y>', self._global_redo, add=True)
+        self._bind_all_if_supported('<Control-Y>', lambda _e: self._global_redo(), add=True)
+        self._bind_all_if_supported('<Control-Tab>', lambda _e: self._cycle_tab(1), add=True)
+        self._bind_all_if_supported('<Control-Shift-Tab>', lambda _e: self._cycle_tab(-1), add=True)
+        self._bind_all_if_supported('<Control-ISO_Left_Tab>', lambda _e: self._cycle_tab(-1), add=True)
+
+    def _bind_if_supported(self, widget, sequence: str, callback, add=None) -> None:
+        try:
+            widget.bind(sequence, callback, add=add)
+        except tk.TclError:
+            pass
+
+    def _bind_all_if_supported(self, sequence: str, callback, add=None) -> None:
+        try:
+            self.bind_all(sequence, callback, add=add)
+        except tk.TclError:
+            pass
 
     def _open_settings(self) -> None:
         if hasattr(self, 'settings_window') and self.settings_window.winfo_exists():
@@ -1027,19 +1043,24 @@ class PortableIDE(tk.Tk):
         self.bind_text_shortcuts(self.input_text)
 
     def bind_text_shortcuts(self, widget: tk.Text) -> None:
-        widget.bind('<Control-a>', lambda _e, w=widget: self._select_all_widget(w))
-        widget.bind('<Control-A>', lambda _e, w=widget: self._select_all_widget(w))
-        widget.bind('<Control-c>', lambda _e, w=widget: self._clipboard_copy_widget(w))
-        widget.bind('<Control-C>', lambda _e, w=widget: self._clipboard_copy_widget(w))
-        widget.bind('<Control-x>', lambda _e, w=widget: self._clipboard_cut_widget(w))
-        widget.bind('<Control-X>', lambda _e, w=widget: self._clipboard_cut_widget(w))
-        widget.bind('<Control-v>', lambda _e, w=widget: self._clipboard_paste_widget(w))
-        widget.bind('<Control-V>', lambda _e, w=widget: self._clipboard_paste_widget(w))
-        widget.bind('<Control-z>', lambda _e, w=widget: self._undo_widget(w))
-        widget.bind('<Control-Z>', lambda _e, w=widget: self._undo_widget(w))
-        widget.bind('<Control-y>', lambda _e, w=widget: self._redo_widget(w))
-        widget.bind('<Control-Y>', lambda _e, w=widget: self._redo_widget(w))
-        widget.bind('<Control-KeyPress>', lambda e, w=widget: self._handle_control_key(w, e), add=True)
+        self._bind_if_supported(widget, '<Control-a>', lambda _e, w=widget: self._select_all_widget(w))
+        self._bind_if_supported(widget, '<Control-A>', lambda _e, w=widget: self._select_all_widget(w))
+        if sys.platform == 'darwin':
+            self._bind_if_supported(widget, '<Command-a>', lambda _e, w=widget: self._select_all_widget(w))
+            self._bind_if_supported(widget, '<Command-A>', lambda _e, w=widget: self._select_all_widget(w))
+        self._bind_if_supported(widget, '<Control-c>', lambda _e, w=widget: self._clipboard_copy_widget(w))
+        self._bind_if_supported(widget, '<Control-C>', lambda _e, w=widget: self._clipboard_copy_widget(w))
+        self._bind_if_supported(widget, '<Control-x>', lambda _e, w=widget: self._clipboard_cut_widget(w))
+        self._bind_if_supported(widget, '<Control-X>', lambda _e, w=widget: self._clipboard_cut_widget(w))
+        self._bind_if_supported(widget, '<Control-v>', lambda _e, w=widget: self._clipboard_paste_widget(w))
+        self._bind_if_supported(widget, '<Control-V>', lambda _e, w=widget: self._clipboard_paste_widget(w))
+        self._bind_if_supported(widget, '<Control-z>', lambda _e, w=widget: self._undo_widget(w))
+        self._bind_if_supported(widget, '<Control-Z>', lambda _e, w=widget: self._undo_widget(w))
+        self._bind_if_supported(widget, '<Control-y>', lambda _e, w=widget: self._redo_widget(w))
+        self._bind_if_supported(widget, '<Control-Y>', lambda _e, w=widget: self._redo_widget(w))
+        self._bind_if_supported(widget, '<Control-KeyPress>', lambda e, w=widget: self._handle_control_key(w, e), add=True)
+        if sys.platform == 'darwin':
+            self._bind_if_supported(widget, '<Command-KeyPress>', lambda e, w=widget: self._handle_control_key(w, e, require_control=False), add=True)
 
     def _global_select_all(self, _event=None) -> str | None:
         widget = self._resolve_text_target()
@@ -1077,9 +1098,17 @@ class PortableIDE(tk.Tk):
             return self._redo_widget(widget)
         return None
 
-    def _handle_control_key(self, widget: tk.Text, event: tk.Event) -> str | None:
-        if not (event.state & 0x4):
+    def _handle_control_key(self, widget: tk.Text, event: tk.Event, require_control: bool = True) -> str | None:
+        if require_control and not (event.state & 0x4):
             return None
+        keysym_map = {
+            'a': self._select_all_widget,
+            'c': self._clipboard_copy_widget,
+            'v': self._clipboard_paste_widget,
+            'x': self._clipboard_cut_widget,
+            'z': self._undo_widget,
+            'y': self._redo_widget,
+        }
         keycode_map = {
             65: self._select_all_widget,   # A
             67: self._clipboard_copy_widget,  # C
@@ -1088,7 +1117,9 @@ class PortableIDE(tk.Tk):
             90: self._undo_widget,  # Z
             89: self._redo_widget,  # Y
         }
-        action = keycode_map.get(event.keycode)
+        action = keysym_map.get(str(getattr(event, 'keysym', '')).lower())
+        if action is None:
+            action = keycode_map.get(event.keycode)
         if action:
             return action(widget)
         return None
@@ -1246,6 +1277,21 @@ class PortableIDE(tk.Tk):
         widget.insert('insert', '    ')
         return 'break'
 
+    def _newline_and_indent(self, widget: tk.Text) -> str:
+        if widget.tag_ranges('sel'):
+            widget.delete('sel.first', 'sel.last')
+
+        current_line = widget.get('insert linestart', 'insert')
+        indent = current_line[:len(current_line) - len(current_line.lstrip(' \t'))]
+        if current_line.rstrip().endswith(':'):
+            indent += '    '
+
+        widget.edit_separator()
+        widget.insert('insert', '\n' + indent)
+        widget.edit_separator()
+        widget.see('insert')
+        return 'break'
+
     def _indent_selection(self, widget: tk.Text) -> str:
         try:
             start = widget.index('sel.first')
@@ -1352,7 +1398,13 @@ class PortableIDE(tk.Tk):
         return 'break'
 
     def _select_all_widget(self, widget: tk.Text) -> str:
-        widget.tag_add('sel', '1.0', 'end')
+        widget.focus_set()
+        try:
+            widget.event_generate('<<SelectAll>>')
+        except tk.TclError:
+            pass
+        if not widget.tag_ranges('sel'):
+            widget.tag_add('sel', '1.0', 'end')
         return 'break'
 
     def _clipboard_copy_widget(self, widget: tk.Text) -> str:

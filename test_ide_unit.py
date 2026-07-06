@@ -122,6 +122,27 @@ class FakeApp:
     def _replace_selection(self, widget, text):
         return ide.PortableIDE._replace_selection(self, widget, text)
 
+    def _select_all_widget(self, widget):
+        return ide.PortableIDE._select_all_widget(self, widget)
+
+    def _clipboard_copy_widget(self, widget):
+        return ide.PortableIDE._clipboard_copy_widget(self, widget)
+
+    def _clipboard_cut_widget(self, widget):
+        return ide.PortableIDE._clipboard_cut_widget(self, widget)
+
+    def _clipboard_paste_widget(self, widget):
+        return ide.PortableIDE._clipboard_paste_widget(self, widget)
+
+    def _undo_widget(self, widget):
+        return ide.PortableIDE._undo_widget(self, widget)
+
+    def _redo_widget(self, widget):
+        return ide.PortableIDE._redo_widget(self, widget)
+
+    def _bind_if_supported(self, widget, sequence, callback, add=None):
+        return ide.PortableIDE._bind_if_supported(self, widget, sequence, callback, add)
+
 
 class TestIDEUnit(unittest.TestCase):
 
@@ -466,7 +487,37 @@ class TestIDEUnit(unittest.TestCase):
         finally:
             root.destroy()
 
-    # 34. _cycle_tab
+    # 34. _newline_and_indent (same block)
+    def test_newline_and_indent_keeps_current_indent(self):
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            app = FakeApp()
+            text = tk.Text(root)
+            text.insert('1.0', '    print("hello")')
+            text.mark_set('insert', '1.end')
+            res = ide.PortableIDE._newline_and_indent(app, text)
+            self.assertEqual(res, 'break')
+            self.assertEqual(text.get('1.0', 'end-1c'), '    print("hello")\n    ')
+        finally:
+            root.destroy()
+
+    # 35. _newline_and_indent (colon block)
+    def test_newline_and_indent_after_colon(self):
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            app = FakeApp()
+            text = tk.Text(root)
+            text.insert('1.0', 'if True:')
+            text.mark_set('insert', '1.end')
+            res = ide.PortableIDE._newline_and_indent(app, text)
+            self.assertEqual(res, 'break')
+            self.assertEqual(text.get('1.0', 'end-1c'), 'if True:\n    ')
+        finally:
+            root.destroy()
+
+    # 36. _cycle_tab
     def test_cycle_tab(self):
         root = tk.Tk()
         root.withdraw()
@@ -498,7 +549,7 @@ class TestIDEUnit(unittest.TestCase):
         finally:
             root.destroy()
 
-    # 35. _maybe_focus_input_on_output
+    # 37. _maybe_focus_input_on_output
     def test_maybe_focus_input_on_output(self):
         app = FakeApp()
         app._pulse_called = False
@@ -513,7 +564,7 @@ class TestIDEUnit(unittest.TestCase):
         ide.PortableIDE._maybe_focus_input_on_output(app, "hello")
         self.assertTrue(app._pulse_called)
 
-    # 36. _pulse_input_focus
+    # 38. _pulse_input_focus
     def test_pulse_input_focus(self):
         class FakeLabel:
             def __init__(self):
@@ -545,7 +596,7 @@ class TestIDEUnit(unittest.TestCase):
         self.assertEqual(app.input_text.cfg.get('background'), '#2563eb')
         self.assertTrue(app.input_text.focused)
 
-    # 37. _load_module_source (from tabs)
+    # 39. _load_module_source (from tabs)
     def test_load_module_source_from_tabs(self):
         app = FakeApp()
         tab1 = FakeTab(virtual_name='module1.py', content='x = 10')
@@ -553,7 +604,7 @@ class TestIDEUnit(unittest.TestCase):
         res = ide.PortableIDE._load_module_source(app, 'module1', None)
         self.assertEqual(res, 'x = 10')
 
-    # 38. _load_module_source (from file system)
+    # 40. _load_module_source (from file system)
     def test_load_module_source_from_fs(self):
         app = FakeApp()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -563,7 +614,7 @@ class TestIDEUnit(unittest.TestCase):
             res = ide.PortableIDE._load_module_source(app, 'module2', module_file)
             self.assertEqual(res, 'y = 20')
 
-    # 39. _needs_turtle (recursive turtle usage)
+    # 41. _needs_turtle (recursive turtle usage)
     def test_needs_turtle_recursive(self):
         app = FakeApp()
         tab = FakeTab(content='import module_a')
@@ -573,7 +624,7 @@ class TestIDEUnit(unittest.TestCase):
         app.tabs_by_frame = {'f1': tab, 'f2': tab_a, 'f3': tab_b}
         self.assertTrue(ide.PortableIDE._needs_turtle(app, tab, None))
 
-    # 40. _find_tab_by_filename (path match)
+    # 42. _find_tab_by_filename (path match)
     def test_find_tab_by_filename_path(self):
         app = FakeApp()
         tab = FakeTab(path=Path("C:/foo/bar.py"))
@@ -581,7 +632,7 @@ class TestIDEUnit(unittest.TestCase):
         res = ide.PortableIDE._find_tab_by_filename(app, 'bar.py')
         self.assertEqual(res, tab)
 
-    # 41. _find_tab_by_filename (virtual name match)
+    # 43. _find_tab_by_filename (virtual name match)
     def test_find_tab_by_filename_virtual(self):
         app = FakeApp()
         tab = FakeTab(virtual_name='module1.py')
@@ -589,7 +640,7 @@ class TestIDEUnit(unittest.TestCase):
         res = ide.PortableIDE._find_tab_by_filename(app, 'module1.py')
         self.assertEqual(res, tab)
 
-    # 42. _get_selection
+    # 44. _get_selection
     def test_get_selection(self):
         root = tk.Tk()
         root.withdraw()
@@ -604,7 +655,7 @@ class TestIDEUnit(unittest.TestCase):
         finally:
             root.destroy()
 
-    # 43. _delete_selection
+    # 45. _delete_selection
     def test_delete_selection(self):
         root = tk.Tk()
         root.withdraw()
@@ -618,7 +669,7 @@ class TestIDEUnit(unittest.TestCase):
         finally:
             root.destroy()
 
-    # 44. _replace_selection
+    # 46. _replace_selection
     def test_replace_selection(self):
         root = tk.Tk()
         root.withdraw()
@@ -632,7 +683,7 @@ class TestIDEUnit(unittest.TestCase):
         finally:
             root.destroy()
 
-    # 45. get_python_executable (env var set)
+    # 47. get_python_executable (env var set)
     def test_get_python_executable_env(self):
         orig_environ = os.environ
         try:
@@ -646,7 +697,7 @@ class TestIDEUnit(unittest.TestCase):
         finally:
             os.environ = orig_environ
 
-    # 46. get_python_executable (fallback to PYTHON_DIR)
+    # 48. get_python_executable (fallback to PYTHON_DIR)
     def test_get_python_executable_fallback(self):
         orig_environ = os.environ
         orig_PYTHON_DIR = ide.PYTHON_DIR
@@ -661,7 +712,7 @@ class TestIDEUnit(unittest.TestCase):
             os.environ = orig_environ
             ide.PYTHON_DIR = orig_PYTHON_DIR
 
-    # 47. _select_all_widget
+    # 49. _select_all_widget
     def test_select_all_widget(self):
         root = tk.Tk()
         root.withdraw()
@@ -675,7 +726,88 @@ class TestIDEUnit(unittest.TestCase):
         finally:
             root.destroy()
 
-    # 48. clipboard helpers (copy, cut, paste)
+    # 50. _select_all_widget uses Tk virtual event
+    def test_select_all_widget_uses_native_virtual_event(self):
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            app = FakeApp()
+            text = tk.Text(root)
+            text.insert('1.0', 'hello world')
+            generated = []
+            text.bind('<<SelectAll>>', lambda _e: generated.append(True), add=True)
+            res = ide.PortableIDE._select_all_widget(app, text)
+            self.assertEqual(res, 'break')
+            self.assertTrue(generated)
+            self.assertEqual(text.get('sel.first', 'sel.last'), 'hello world\n')
+        finally:
+            root.destroy()
+
+    # 51. _handle_control_key uses keysym
+    def test_handle_control_key_uses_keysym(self):
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            app = FakeApp()
+            text = tk.Text(root)
+            text.insert('1.0', 'hello world')
+
+            class Event:
+                state = 0x4
+                keycode = 0
+                keysym = 'a'
+
+            res = ide.PortableIDE._handle_control_key(app, text, Event())
+            self.assertEqual(res, 'break')
+            self.assertEqual(text.get('sel.first', 'sel.last'), 'hello world\n')
+        finally:
+            root.destroy()
+
+    # 52. _handle_control_key supports command-filtered events by keycode
+    def test_handle_control_key_command_event_uses_keycode(self):
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            app = FakeApp()
+            text = tk.Text(root)
+            text.insert('1.0', 'hello world')
+
+            class Event:
+                state = 0
+                keycode = 65
+                keysym = 'Cyrillic_ef'
+
+            res = ide.PortableIDE._handle_control_key(app, text, Event(), require_control=False)
+            self.assertEqual(res, 'break')
+            self.assertEqual(text.get('sel.first', 'sel.last'), 'hello world\n')
+        finally:
+            root.destroy()
+
+    # 53. bind_text_shortcuts does not bind Command on non-macOS
+    def test_bind_text_shortcuts_command_only_on_macos(self):
+        root = tk.Tk()
+        root.withdraw()
+        orig_platform = ide.sys.platform
+        try:
+            app = FakeApp()
+            text = tk.Text(root)
+            calls = []
+            app._bind_if_supported = lambda _w, sequence, _callback, add=None: calls.append(sequence)
+            ide.sys.platform = 'win32'
+            ide.PortableIDE.bind_text_shortcuts(app, text)
+            self.assertNotIn('<Command-a>', calls)
+            self.assertNotIn('<Command-KeyPress>', calls)
+
+            calls.clear()
+            ide.sys.platform = 'darwin'
+            ide.PortableIDE.bind_text_shortcuts(app, text)
+            self.assertIn('<Command-a>', calls)
+            self.assertIn('<Command-KeyPress>', calls)
+        finally:
+            ide.sys.platform = orig_platform
+            root.destroy()
+
+    # 54. clipboard helpers (copy, cut, paste)
     def test_clipboard_helpers(self):
         root = tk.Tk()
         root.withdraw()
