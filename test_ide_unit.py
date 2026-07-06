@@ -72,6 +72,7 @@ class FakeApp:
         self.inline_running = False
         self.main_tab = None
         self._main_created = False
+        self.theme = ide.THEMES['light']
         if root:
             self.notebook = ttk.Notebook(root)
         else:
@@ -593,7 +594,7 @@ class TestIDEUnit(unittest.TestCase):
         # Verify it has the hourglass icon and ends with a colon to be encoding safe
         self.assertIn('⏳', app.input_label.text)
         self.assertTrue(app.input_label.text.strip().endswith(':'))
-        self.assertEqual(app.input_text.cfg.get('background'), '#2563eb')
+        self.assertEqual(app.input_text.cfg.get('background'), app.theme['input_wait_bg'])
         self.assertTrue(app.input_text.focused)
 
     # 39. _load_module_source (from tabs)

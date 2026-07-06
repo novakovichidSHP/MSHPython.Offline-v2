@@ -1,0 +1,223 @@
+/*
+  МШПайтон.Оффлайн: Calm Focus visual target
+
+  This file is the visual source of truth for the selected mockup. The current
+  Tk implementation maps these tokens as closely as Tk/ttk allows; it does not
+  parse this CSS at runtime.
+*/
+
+:root {
+  color-scheme: light;
+
+  --font-ui: "Rubik", "Segoe UI Variable", "Segoe UI", sans-serif;
+  --font-code: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+
+  --app-bg: #f5f9ff;
+  --app-bg-top: #edf6ff;
+  --panel-bg: rgba(255, 255, 255, 0.96);
+  --panel-bg-soft: rgba(246, 250, 255, 0.94);
+  --toolbar-bg: rgba(234, 243, 255, 0.92);
+  --border: #c7d8f2;
+  --border-strong: #9db8df;
+
+  --text: #0f1f3a;
+  --text-muted: #5b6b84;
+  --accent: #1c6bff;
+  --accent-hover: #1558d6;
+  --accent-cyan: #1ab5d8;
+  --danger: #e04b4b;
+  --danger-soft: #ffe4e4;
+  --success: #1a8f5a;
+
+  --radius-panel: 16px;
+  --radius-control: 10px;
+  --radius-small: 8px;
+  --shadow-panel: 0 18px 35px rgba(18, 54, 110, 0.14);
+  --shadow-control: 0 8px 18px rgba(28, 107, 255, 0.12);
+
+  --space-page-x: 16px;
+  --space-page-y: 12px;
+  --space-panel: 12px;
+  --toolbar-height: 58px;
+  --runbar-height: 60px;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font: 14px/1.35 var(--font-ui);
+  color: var(--text);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(26, 181, 216, 0.16), transparent 40%),
+    radial-gradient(circle at 78% 0%, rgba(28, 107, 255, 0.18), transparent 48%),
+    linear-gradient(180deg, var(--app-bg-top), var(--app-bg));
+}
+
+.app-shell {
+  display: grid;
+  grid-template-rows: 56px var(--toolbar-height) var(--runbar-height) minmax(0, 1fr) 34px;
+  min-height: 100vh;
+  background: transparent;
+}
+
+.app-header,
+.file-toolbar,
+.run-toolbar,
+.statusbar {
+  background: rgba(255, 255, 255, 0.82);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+}
+
+.file-toolbar,
+.run-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px var(--space-page-x);
+}
+
+.workspace {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 280px;
+  gap: 16px;
+  padding: var(--space-page-y) var(--space-page-x);
+}
+
+.editor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 492px;
+  gap: 16px;
+  min-height: 0;
+}
+
+.bottom-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(360px, 1fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+.panel-header,
+.tabs {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--panel-bg);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #f7fbff;
+}
+
+.button-primary {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(120deg, var(--accent), var(--accent-cyan));
+  box-shadow: var(--shadow-control);
+}
+
+.button-danger {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(120deg, var(--danger), #ff8a7a);
+}
+
+.tab {
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius-control) var(--radius-control) 0 0;
+  background: var(--panel-bg-soft);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.tab-active {
+  background: #fff;
+  color: var(--accent);
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  min-height: 0;
+  font: 15px/1.65 var(--font-code);
+  background: #fff;
+}
+
+.line-numbers {
+  padding: 16px 12px;
+  color: #6f7f97;
+  background: #f1f6ff;
+  border-right: 1px solid var(--border);
+  text-align: right;
+}
+
+.code-surface {
+  padding: 16px;
+  color: var(--text);
+  background: #fff;
+}
+
+.active-line {
+  background: rgba(26, 181, 216, 0.16);
+  border-left: 3px solid var(--accent-cyan);
+}
+
+.console,
+.input {
+  font: 13px/1.5 var(--font-code);
+  color: var(--text);
+  background: #f7fbff;
+}
+
+.input-waiting {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(28, 107, 255, 0.18);
+}
+
+.turtle-canvas {
+  width: 400px;
+  height: 400px;
+  margin: 12px auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+}
+
+/* Tk/ttk known gaps:
+   - Native titlebar and native menubar cannot be styled to match this CSS.
+   - ttk buttons do not support real border-radius, gradients, or shadows.
+   - ttk Panedwindow sash and scrollbars stay platform-native unless replaced.
+   - Backdrop blur and translucent panels are not available.
+*/

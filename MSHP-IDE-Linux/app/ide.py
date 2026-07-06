@@ -43,17 +43,17 @@ def get_best_font(families: list[str], default: str = 'monospace') -> str:
 # Font selection based on OS
 try:
     if sys.platform == 'darwin':  # macOS
-        MONO_FONT_NAME = get_best_font(['Menlo', 'Monaco', 'SF Mono', 'Courier New'], 'Courier')
-        UI_FONT_NAME = '.AppleSystemUIFont'
+        MONO_FONT_NAME = get_best_font(['JetBrains Mono', 'Menlo', 'Monaco', 'SF Mono', 'Courier New'], 'Courier')
+        UI_FONT_NAME = get_best_font(['Rubik', '.AppleSystemUIFont', 'Helvetica Neue'], '.AppleSystemUIFont')
         UI_FONT_SIZE = 13
     elif os.name == 'nt':  # Windows
-        MONO_FONT_NAME = get_best_font(['Consolas', 'Cascadia Code', 'Courier New'], 'Courier New')
-        UI_FONT_NAME = 'Segoe UI'
+        MONO_FONT_NAME = get_best_font(['JetBrains Mono', 'Cascadia Code', 'Consolas', 'Courier New'], 'Courier New')
+        UI_FONT_NAME = get_best_font(['Rubik', 'Segoe UI Variable', 'Segoe UI'], 'Segoe UI')
         UI_FONT_SIZE = 10
     else:  # Linux
         # libtk is now Xft-capable, so we can use fontconfig names
-        MONO_FONT_NAME = get_best_font(['DejaVu Sans Mono', 'Ubuntu Mono', 'Liberation Mono'], 'monospace')
-        UI_FONT_NAME = 'sans-serif'  # Fontconfig will pick DejaVu Sans / Ubuntu
+        MONO_FONT_NAME = get_best_font(['JetBrains Mono', 'DejaVu Sans Mono', 'Ubuntu Mono', 'Liberation Mono'], 'monospace')
+        UI_FONT_NAME = get_best_font(['Rubik', 'DejaVu Sans', 'Ubuntu'], 'sans-serif')
         UI_FONT_SIZE = 11
 except Exception:
     MONO_FONT_NAME = 'monospace'
@@ -85,88 +85,100 @@ TEMP_AUTOSAVE_DELAY_MS = 500
 
 THEMES = {
     'light': {
-        'app_bg': '#f8f9fa',
+        'app_bg': '#eef6ff',
         'panel_bg': '#ffffff',
-        'toolbar_bg': '#e9ecef',
-        'accent': '#0d6efd',
-        'accent_dark': '#0b5ed7',
-        'menu_bg': '#f8f9fa',
-        'menu_fg': '#212529',
-        'menu_active_bg': '#e9ecef',
-        'menu_active_fg': '#0d6efd',
-        'run_bg': '#198754',
-        'run_bg_active': '#157347',
-        'stop_bg': '#dc3545',
-        'stop_bg_active': '#bb2d3b',
-        'stop_bg_disabled': '#f8d7da',
-        'stop_fg_disabled': '#842029',
+        'panel_alt_bg': '#f6faff',
+        'toolbar_bg': '#eaf3ff',
+        'toolbar_alt_bg': '#f4f8ff',
+        'border': '#c7d8f2',
+        'accent': '#1c6bff',
+        'accent_dark': '#1558d6',
+        'accent_2': '#1ab5d8',
+        'menu_bg': '#f6faff',
+        'menu_fg': '#0f1f3a',
+        'menu_active_bg': '#eaf3ff',
+        'menu_active_fg': '#1c6bff',
+        'run_bg': '#1c6bff',
+        'run_bg_active': '#1558d6',
+        'stop_bg': '#e04b4b',
+        'stop_bg_active': '#c93636',
+        'stop_bg_disabled': '#ffe4e4',
+        'stop_fg_disabled': '#a33a3a',
         'editor_bg': '#ffffff',
-        'editor_fg': '#212529',
-        'console_bg': '#f8f9fa',
-        'console_fg': '#212529',
-        'line_number_bg': '#f1f3f5',
-        'line_number_fg': '#adb5bd',
+        'editor_fg': '#0f1f3a',
+        'console_bg': '#f7fbff',
+        'console_fg': '#0f1f3a',
+        'line_number_bg': '#f1f6ff',
+        'line_number_fg': '#6f7f97',
         'input_bg': '#ffffff',
-        'input_bg_focus': '#f8f9fa',
-        'input_fg': '#212529',
+        'input_bg_focus': '#f6faff',
+        'input_fg': '#0f1f3a',
         'selection_bg': '#cfe2ff',
-        'selection_fg': '#212529',
-        'status_fg': '#0d6efd',
-        'stderr_fg': '#dc3545',
-        'stdin_fg': '#20c997',
-        'scrollbar_bg': '#dee2e6',
-        'scrollbar_trough': '#f8f9fa',
-        'check_bg': '#f8f9fa',
-        'check_fg': '#212529',
-        'syntax_comment': '#6c757d',
-        'syntax_string': '#d63384',
-        'syntax_number': '#0d6efd',
-        'syntax_keyword': '#6610f2',
-        'syntax_builtin': '#fd7e14',
-        'syntax_error': '#dc3545',
-        'execution_line_bg': '#fff3cd',
+        'selection_fg': '#0f1f3a',
+        'status_fg': '#1c6bff',
+        'stderr_fg': '#e04b4b',
+        'stdin_fg': '#1a8f5a',
+        'scrollbar_bg': '#d7e5f8',
+        'scrollbar_trough': '#f4f8ff',
+        'check_bg': '#eaf3ff',
+        'check_fg': '#0f1f3a',
+        'syntax_comment': '#5b6b84',
+        'syntax_string': '#df0002',
+        'syntax_number': '#3a00dc',
+        'syntax_keyword': '#c800a4',
+        'syntax_builtin': '#1c6bff',
+        'syntax_error': '#e04b4b',
+        'execution_line_bg': '#dcf7ff',
+        'input_wait_bg': '#1c6bff',
+        'input_wait_fg': '#ffffff',
     },
     'dark': {
-        'app_bg': '#212529',
-        'panel_bg': '#2c3035',
-        'toolbar_bg': '#343a40',
+        'app_bg': '#101b2f',
+        'panel_bg': '#17243a',
+        'panel_alt_bg': '#1d2d48',
+        'toolbar_bg': '#1d2d48',
+        'toolbar_alt_bg': '#16253d',
+        'border': '#315078',
         'accent': '#6ea8fe',
-        'accent_dark': '#3d8bfd',
-        'menu_bg': '#343a40',
-        'menu_fg': '#dee2e6',
-        'menu_active_bg': '#495057',
+        'accent_dark': '#4c8ff1',
+        'accent_2': '#55d8ee',
+        'menu_bg': '#16253d',
+        'menu_fg': '#dce9ff',
+        'menu_active_bg': '#1d2d48',
         'menu_active_fg': '#ffffff',
-        'run_bg': '#198754',
-        'run_bg_active': '#75b798',
-        'stop_bg': '#dc3545',
-        'stop_bg_active': '#ea868f',
-        'stop_bg_disabled': '#58151c',
-        'stop_fg_disabled': '#842029',
-        'editor_bg': '#2c3035',
-        'editor_fg': '#f8f9fa',
-        'console_bg': '#212529',
-        'console_fg': '#f8f9fa',
-        'line_number_bg': '#343a40',
-        'line_number_fg': '#6c757d',
-        'input_bg': '#2c3035',
-        'input_bg_focus': '#343a40',
-        'input_fg': '#f8f9fa',
-        'selection_bg': '#0d6efd',
+        'run_bg': '#1c6bff',
+        'run_bg_active': '#6ea8fe',
+        'stop_bg': '#e04b4b',
+        'stop_bg_active': '#ff8a7a',
+        'stop_bg_disabled': '#442733',
+        'stop_fg_disabled': '#d68a8a',
+        'editor_bg': '#111d31',
+        'editor_fg': '#f5f9ff',
+        'console_bg': '#101b2f',
+        'console_fg': '#f5f9ff',
+        'line_number_bg': '#16253d',
+        'line_number_fg': '#7f92b2',
+        'input_bg': '#111d31',
+        'input_bg_focus': '#16253d',
+        'input_fg': '#f5f9ff',
+        'selection_bg': '#245fb8',
         'selection_fg': '#ffffff',
         'status_fg': '#6ea8fe',
-        'stderr_fg': '#ea868f',
-        'stdin_fg': '#75b798',
-        'scrollbar_bg': '#495057',
-        'scrollbar_trough': '#343a40',
-        'check_bg': '#212529',
-        'check_fg': '#f8f9fa',
-        'syntax_comment': '#adb5bd',
-        'syntax_string': '#e685b5',
-        'syntax_number': '#6ea8fe',
-        'syntax_keyword': '#a574f5',
-        'syntax_builtin': '#fd9843',
-        'syntax_error': '#ea868f',
-        'execution_line_bg': '#004a77',
+        'stderr_fg': '#ff8a7a',
+        'stdin_fg': '#74d69a',
+        'scrollbar_bg': '#315078',
+        'scrollbar_trough': '#16253d',
+        'check_bg': '#16253d',
+        'check_fg': '#f5f9ff',
+        'syntax_comment': '#9aacbf',
+        'syntax_string': '#ff9a9a',
+        'syntax_number': '#9fb7ff',
+        'syntax_keyword': '#ff9eea',
+        'syntax_builtin': '#55d8ee',
+        'syntax_error': '#ff8a7a',
+        'execution_line_bg': '#123d57',
+        'input_wait_bg': '#1c6bff',
+        'input_wait_fg': '#ffffff',
     },
 }
 
@@ -271,13 +283,18 @@ class EditorTab:
 
     def apply_theme(self) -> None:
         theme = self.app.theme
-        self.line_numbers.configure(background=theme['line_number_bg'])
+        self.line_numbers.configure(background=theme['line_number_bg'], highlightthickness=0, bd=0)
         self.text.configure(
             background=theme['editor_bg'],
             foreground=theme['editor_fg'],
             insertbackground=theme['editor_fg'],
             selectbackground=theme['selection_bg'],
             selectforeground=theme['selection_fg'],
+            relief='flat',
+            borderwidth=0,
+            highlightthickness=0,
+            padx=12,
+            pady=12,
         )
         self._setup_tags()
         self._update_line_numbers()
@@ -464,52 +481,63 @@ class PortableIDE(tk.Tk):
         self.configure(background=theme['app_bg'])
         style.configure('.', font=UI_FONT)
         style.configure('TFrame', background=theme['app_bg'])
-        style.configure('Editor.TFrame', background=theme['panel_bg'])
+        style.configure('Editor.TFrame', background=theme['panel_bg'], borderwidth=1, relief='solid')
         style.configure('Toolbar.TFrame', background=theme['toolbar_bg'])
-        style.configure('Runbar.TFrame', background=theme['app_bg'])
+        style.configure('Runbar.TFrame', background=theme['toolbar_alt_bg'])
         style.configure('TLabel', background=theme['app_bg'], foreground=theme['editor_fg'], font=UI_FONT)
-        style.configure('Toolbar.TLabel', background=theme['panel_bg'], foreground=theme['editor_fg'], font=UI_FONT_BOLD)
+        style.configure('Toolbar.TLabel', background=theme['toolbar_bg'], foreground=theme['editor_fg'], font=UI_FONT_BOLD)
         style.configure(
             'TCheckbutton',
             background=theme['check_bg'],
             foreground=theme['check_fg'],
+            focuscolor=theme['toolbar_bg'],
+            borderwidth=0,
         )
         style.map(
             'TCheckbutton',
-            background=[('active', theme['toolbar_bg'])],
+            background=[('active', theme['toolbar_alt_bg'])],
             foreground=[('active', theme['accent'])],
+        )
+        style.configure(
+            'TRadiobutton',
+            background=theme['panel_bg'],
+            foreground=theme['editor_fg'],
+            focuscolor=theme['panel_bg'],
         )
         style.configure(
             'TScrollbar',
             background=theme['scrollbar_bg'],
             troughcolor=theme['scrollbar_trough'],
-            bordercolor=theme['scrollbar_trough'],
+            bordercolor=theme['border'],
             arrowcolor=theme['editor_fg'],
+            relief='flat',
+            borderwidth=0,
         )
-        style.configure('Toolbar.TButton', background=theme['accent'], foreground='white', padding=(16, 8), borderwidth=0)
+        style.configure('Toolbar.TButton', background=theme['panel_bg'], foreground=theme['editor_fg'], padding=(12, 7), borderwidth=1, relief='flat')
         style.map(
             'Toolbar.TButton',
-            background=[('active', theme['accent_dark'])],
-            foreground=[('active', 'white')],
+            background=[('active', theme['toolbar_alt_bg'])],
+            foreground=[('active', theme['accent'])],
         )
-        style.configure('Run.TButton', background=theme['run_bg'], foreground='white', padding=(14, 6), borderwidth=0)
+        style.configure('Run.TButton', background=theme['run_bg'], foreground='white', padding=(14, 7), borderwidth=0, relief='flat')
         style.map(
             'Run.TButton',
             background=[('active', theme['run_bg_active'])],
             foreground=[('active', 'white')],
         )
-        style.configure('Stop.TButton', background=theme['stop_bg'], foreground='white', padding=(14, 6), borderwidth=0)
+        style.configure('Stop.TButton', background=theme['stop_bg'], foreground='white', padding=(14, 7), borderwidth=0, relief='flat')
         style.map(
             'Stop.TButton',
             background=[('disabled', theme['stop_bg_disabled']), ('active', theme['stop_bg_active'])],
             foreground=[('disabled', theme['stop_fg_disabled']), ('active', 'white')],
         )
-        style.configure('TNotebook', background=theme['app_bg'], borderwidth=0)
+        style.configure('TNotebook', background=theme['panel_bg'], borderwidth=0)
         style.configure(
             'TNotebook.Tab',
             background=theme['toolbar_bg'],
             foreground=theme['editor_fg'],
-            padding=(10, 4),
+            padding=(14, 7),
+            borderwidth=0,
         )
         style.map(
             'TNotebook.Tab',
@@ -528,6 +556,11 @@ class PortableIDE(tk.Tk):
             insertbackground=theme['console_fg'],
             selectbackground=theme['selection_bg'],
             selectforeground=theme['selection_fg'],
+            relief='flat',
+            borderwidth=0,
+            highlightthickness=0,
+            padx=12,
+            pady=10,
         )
         self.console.tag_configure('stdout', foreground=theme['console_fg'])
         self.console.tag_configure('stderr', foreground=theme['stderr_fg'])
@@ -538,19 +571,23 @@ class PortableIDE(tk.Tk):
             background=theme['input_bg'],
             foreground=theme['input_fg'],
             insertbackground=theme['input_fg'],
-            highlightbackground=theme['accent'],
+            highlightbackground=theme['border'],
             highlightcolor=theme['accent'],
             selectbackground=theme['selection_bg'],
             selectforeground=theme['selection_fg'],
+            relief='solid',
+            bd=1,
         )
+        if hasattr(self, 'input_shortcuts'):
+            self.input_shortcuts.configure(background=theme['toolbar_bg'], foreground=theme['line_number_fg'])
 
         for tab in self.tabs_by_frame.values():
             tab.apply_theme()
 
         self.turtle_canvas.configure(
-            background=theme['panel_bg'],
-            highlightbackground=theme['accent'],
-            highlightcolor=theme['accent_dark'],
+            background=theme['editor_bg'],
+            highlightbackground=theme['border'],
+            highlightcolor=theme['accent_2'],
         )
 
         self._apply_menu_theme()
@@ -561,34 +598,34 @@ class PortableIDE(tk.Tk):
         self._create_menu()
 
         file_toolbar = ttk.Frame(self, style='Toolbar.TFrame')
-        file_toolbar.pack(fill='x')
+        file_toolbar.pack(fill='x', padx=14, pady=(12, 0))
         ttk.Button(file_toolbar, text=icon('🆕', 'Новый'), command=self.new_tab, style='Toolbar.TButton').pack(
-            side='left', padx=4, pady=6
+            side='left', padx=3, pady=6
         )
         ttk.Button(file_toolbar, text=icon('📂', 'Открыть'), command=self.open_file, style='Toolbar.TButton').pack(
-            side='left', padx=4, pady=6
+            side='left', padx=3, pady=6
         )
         ttk.Button(file_toolbar, text=icon('💾', 'Сохранить'), command=self.save_file, style='Toolbar.TButton').pack(
-            side='left', padx=4, pady=6
+            side='left', padx=3, pady=6
         )
         ttk.Button(file_toolbar, text=icon('💾', 'Сохранить все'), command=self.save_all, style='Toolbar.TButton').pack(
-            side='left', padx=4, pady=6
+            side='left', padx=3, pady=6
         )
-        ttk.Separator(file_toolbar, orient='vertical').pack(side='left', fill='y', padx=2, pady=6)
+        ttk.Separator(file_toolbar, orient='vertical').pack(side='left', fill='y', padx=8, pady=8)
         ttk.Button(file_toolbar, text=icon('🗜️', 'Архив'), command=self.save_archive, style='Toolbar.TButton').pack(
-            side='left', padx=4, pady=6
+            side='left', padx=3, pady=6
         )
         ttk.Button(
             file_toolbar,
             text=icon('✏️', 'Переименовать'),
             command=self.rename_current_tab,
             style='Toolbar.TButton',
-        ).pack(side='left', padx=4, pady=6)
-        ttk.Separator(file_toolbar, orient='vertical').pack(side='left', fill='y', padx=2, pady=6)
+        ).pack(side='left', padx=3, pady=6)
+        ttk.Separator(file_toolbar, orient='vertical').pack(side='left', fill='y', padx=8, pady=8)
         ttk.Button(file_toolbar, text=icon('❌', 'Закрыть'), command=self.close_current_tab, style='Toolbar.TButton').pack(
-            side='left', padx=4, pady=6
+            side='left', padx=3, pady=6
         )
-        ttk.Separator(file_toolbar, orient='vertical').pack(side='left', fill='y', padx=2, pady=6)
+        ttk.Separator(file_toolbar, orient='vertical').pack(side='left', fill='y', padx=8, pady=8)
         self.temp_import_button = ttk.Button(
             file_toolbar,
             text=icon('🖼', 'Импорт картинок'),
@@ -602,31 +639,31 @@ class PortableIDE(tk.Tk):
             style='Toolbar.TButton',
         )
         self.temp_mode_label = ttk.Label(file_toolbar, text='Режим: Обычный', font=UI_FONT_BOLD)
-        self.temp_mode_label.pack(side='right', padx=8)
+        self.temp_mode_label.pack(side='right', padx=10, pady=6)
 
         run_toolbar = ttk.Frame(self, style='Runbar.TFrame')
-        run_toolbar.pack(fill='x')
-        ttk.Label(run_toolbar, text='Запуск', font=UI_FONT_BOLD).pack(side='left', padx=(8, 6), pady=6)
+        run_toolbar.pack(fill='x', padx=14, pady=(6, 0))
+        ttk.Label(run_toolbar, text='Запуск', font=UI_FONT_BOLD).pack(side='left', padx=(10, 8), pady=7)
         self.run_button = ttk.Button(
             run_toolbar,
             text=icon('▶️', 'Запустить (F5)'),
             command=self.run_current,
             style='Run.TButton',
         )
-        self.run_button.pack(side='left', padx=4, pady=6)
+        self.run_button.pack(side='left', padx=3, pady=6)
         ttk.Button(
             run_toolbar,
             text=icon('⏭', 'Построчно'),
             command=self.run_current_step,
             style='Run.TButton',
-        ).pack(side='left', padx=4, pady=6)
+        ).pack(side='left', padx=3, pady=6)
         self.stop_button = ttk.Button(
             run_toolbar,
             text=icon('⏹', 'Остановить'),
             command=self.stop_process,
             style='Stop.TButton',
         )
-        self.stop_button.pack(side='left', padx=4, pady=6)
+        self.stop_button.pack(side='left', padx=3, pady=6)
         self.step_next_button = ttk.Button(
             run_toolbar,
             text='➡ Далее',
@@ -639,14 +676,14 @@ class PortableIDE(tk.Tk):
             text='Тёмная тема',
             variable=self.dark_mode,
             command=self._apply_theme,
-        ).pack(side='right', padx=8, pady=6)
+        ).pack(side='right', padx=10, pady=7)
 
         self.paned = ttk.Panedwindow(self, orient='vertical')
-        self.paned.pack(fill='both', expand=True)
+        self.paned.pack(fill='both', expand=True, padx=14, pady=(10, 14))
 
         editor_frame = ttk.Frame(self.paned, style='Editor.TFrame')
         self.editor_paned = ttk.Panedwindow(editor_frame, orient='horizontal')
-        self.editor_paned.pack(fill='both', expand=True)
+        self.editor_paned.pack(fill='both', expand=True, padx=1, pady=1)
 
         editor_main = ttk.Frame(self.editor_paned, style='Editor.TFrame')
         self.notebook = ttk.Notebook(editor_main)
@@ -657,10 +694,10 @@ class PortableIDE(tk.Tk):
         # Turtle frame: fixed size, not resizable
         self.turtle_frame = ttk.Frame(self.editor_paned, style='Editor.TFrame')
         self.turtle_frame.pack_propagate(False)
-        self.turtle_frame.configure(width=416, height=416)
+        self.turtle_frame.configure(width=424, height=424)
         
-        self.turtle_canvas = tk.Canvas(self.turtle_frame, highlightthickness=1, takefocus=1, width=400, height=400)
-        self.turtle_canvas.pack(padx=6, pady=6)
+        self.turtle_canvas = tk.Canvas(self.turtle_frame, highlightthickness=1, bd=0, takefocus=1, width=400, height=400)
+        self.turtle_canvas.pack(padx=12, pady=12)
         self.turtle_canvas.bind('<Button-1>', lambda _e: self.turtle_canvas.focus_set())
         self.turtle_canvas.bind('<Configure>', self._on_turtle_canvas_resize)
         
@@ -670,17 +707,20 @@ class PortableIDE(tk.Tk):
         self.paned.add(editor_frame, weight=3)
 
         # Bottom panel with console and input side by side
-        bottom_frame = ttk.Frame(self.paned)
+        bottom_frame = ttk.Frame(self.paned, style='Editor.TFrame')
         self.bottom_paned = ttk.Panedwindow(bottom_frame, orient='horizontal')
-        self.bottom_paned.pack(fill='both', expand=True)
+        self.bottom_paned.pack(fill='both', expand=True, padx=1, pady=1)
 
-        console_frame = ttk.Frame(self.bottom_paned)
+        console_frame = ttk.Frame(self.bottom_paned, style='Editor.TFrame')
         self.console = tk.Text(
             console_frame,
             height=10,
             wrap='word',
             font=CONSOLE_FONT,
             state='disabled',
+            relief='flat',
+            bd=0,
+            highlightthickness=0,
         )
         self.console.bind('<Control-c>', self._console_copy)
         self.console.bind('<Control-C>', self._console_copy)
@@ -698,19 +738,20 @@ class PortableIDE(tk.Tk):
         self.input_frame = ttk.Frame(self.bottom_paned, style='Editor.TFrame')
         
         # Input header with title and shortcuts
-        input_header = ttk.Frame(self.input_frame, style='Editor.TFrame')
-        input_header.pack(side='top', anchor='w', fill='x', padx=8, pady=(6, 2))
+        input_header = ttk.Frame(self.input_frame, style='Toolbar.TFrame')
+        input_header.pack(side='top', anchor='w', fill='x', padx=8, pady=(8, 2))
         
         self.input_label = ttk.Label(input_header, text='Ввод:', style='Toolbar.TLabel')
         self.input_label.pack(side='left', anchor='w')
         
-        input_shortcuts = ttk.Label(
+        self.input_shortcuts = ttk.Label(
             input_header, 
             text='Enter — отправить  •  Ctrl+Enter — новая строка',
             font=UI_FONT,
-            foreground='#888888'
+            foreground=self.theme['line_number_fg'],
+            style='Toolbar.TLabel',
         )
-        input_shortcuts.pack(side='left', padx=(12, 0), anchor='w')
+        self.input_shortcuts.pack(side='left', padx=(12, 0), anchor='w')
         
         self.input_text = tk.Text(
             self.input_frame,
@@ -718,12 +759,12 @@ class PortableIDE(tk.Tk):
             wrap='word',
             font=INPUT_FONT,
             relief='solid',
-            bd=2,
+            bd=1,
             highlightthickness=1,
-            insertwidth=5,
-            insertbackground='#ff0000',
+            insertwidth=3,
+            insertbackground=self.theme['input_fg'],
         )
-        self.input_text.pack(fill='both', expand=True, padx=8, pady=(0, 6))
+        self.input_text.pack(fill='both', expand=True, padx=8, pady=(2, 8))
         self.input_text.bind('<Return>', self._send_console_input)
         self.input_text.bind('<Control-Return>', self._insert_input_newline)
         self.input_text.bind('<FocusIn>', self._on_input_focus_in)
@@ -1036,7 +1077,8 @@ class PortableIDE(tk.Tk):
                 foreground=theme['menu_fg'],
                 activebackground=theme['menu_active_bg'],
                 activeforeground=theme['menu_active_fg'],
-                borderwidth=0,
+                borderwidth=1,
+                relief='flat',
             )
 
     def _bind_input_shortcuts(self) -> None:
@@ -1313,8 +1355,8 @@ class PortableIDE(tk.Tk):
     def _on_input_focus_in(self, _event=None) -> None:
         if self._waiting_for_input:
             self.input_text.configure(
-                background='#2563eb',
-                foreground='#ffffff'
+                background=self.theme['input_wait_bg'],
+                foreground=self.theme['input_wait_fg'],
             )
 
     def _on_input_focus_out(self, _event=None) -> None:
@@ -1334,10 +1376,10 @@ class PortableIDE(tk.Tk):
         self._waiting_for_input = True
         self.input_label.configure(text=f'{INPUT_WAIT_EMOJI} Ожидание ввода:')
         self.input_text.configure(
-            background='#2563eb',
-            foreground='#ffffff',
+            background=self.theme['input_wait_bg'],
+            foreground=self.theme['input_wait_fg'],
             relief='solid',
-            bd=3,
+            bd=2,
         )
         self.input_text.focus_set()
 
@@ -1373,7 +1415,7 @@ class PortableIDE(tk.Tk):
             background=self.theme['input_bg'],
             foreground=self.theme['input_fg'],
             relief='solid',
-            bd=2,
+            bd=1,
         )
         self.input_label.configure(text='Ввод:')
 
@@ -2054,7 +2096,7 @@ class PortableIDE(tk.Tk):
             background=self.theme['input_bg'],
             foreground=self.theme['input_fg'],
             relief='solid',
-            bd=2,
+            bd=1,
         )
 
         self.step_mode = bool(step_mode)
