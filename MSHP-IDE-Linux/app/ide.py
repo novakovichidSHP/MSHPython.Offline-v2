@@ -408,17 +408,17 @@ class FlowToolbar(tk.Frame):
         self, entries: list[dict[str, object]], width: int
     ) -> list[dict[str, object]]:
         if width >= self._BREAKPOINTS['wide']:
-            slot_rows = (('brand', 'file', 'tab', 'project', 'temp'),)
+            slot_rows = (('brand', 'file', 'tab', 'menu', 'temp'),)
         elif width >= self._BREAKPOINTS['medium']:
             slot_rows = (
                 ('brand', 'file'),
-                ('tab', 'project', 'temp'),
+                ('tab', 'menu', 'temp'),
             )
         else:
             slot_rows = (
                 ('brand',),
                 ('file',),
-                ('tab', 'project', 'temp'),
+                ('tab', 'menu', 'temp'),
             )
 
         used: set[int] = set()
@@ -1404,17 +1404,6 @@ class PortableIDE(tk.Tk):
         self._button(file_group, 'Открыть', self.open_file, padx=12).pack(side='left', padx=2, pady=0)
         self._button(file_group, 'Сохранить', self.save_file, padx=12).pack(side='left', padx=2, pady=0)
         self._button(file_group, 'Сохранить все', self.save_all, padx=12).pack(side='left', padx=2, pady=0)
-        self._toolbar_menu_button(
-            file_group,
-            'Файл',
-            [
-                ('Сохранить как...', self.save_file_as),
-                (None, None),
-                ('Перезапустить приложение', self.restart_app),
-                ('Выход', self.on_exit),
-            ],
-            padx=12,
-        ).pack(side='left', padx=2, pady=0)
 
         tab_group = toolbar_group(slot='tab', separator=True)
         self._button(
@@ -1427,9 +1416,20 @@ class PortableIDE(tk.Tk):
             side='left', padx=2, pady=0
         )
 
-        project_group = toolbar_group(slot='project', separator=True)
+        menu_group = toolbar_group(slot='menu')
         self._toolbar_menu_button(
-            project_group,
+            menu_group,
+            'Файл',
+            [
+                ('Сохранить как...', self.save_file_as),
+                (None, None),
+                ('Перезапустить приложение', self.restart_app),
+                ('Выход', self.on_exit),
+            ],
+            padx=12,
+        ).pack(side='left', padx=2, pady=0)
+        self._toolbar_menu_button(
+            menu_group,
             'Проект',
             [
                 ('Сохранить архив...', self.save_archive),
@@ -1440,7 +1440,7 @@ class PortableIDE(tk.Tk):
             padx=12,
         ).pack(side='left', padx=2, pady=0)
         self._toolbar_menu_button(
-            project_group,
+            menu_group,
             'Инструменты',
             [
                 ('Сделать отступ', self.indent_selection),
