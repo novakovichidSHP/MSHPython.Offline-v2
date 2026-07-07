@@ -1426,7 +1426,7 @@ class PortableIDE(tk.Tk):
                 ('Перезапустить приложение', self.restart_app),
                 ('Выход', self.on_exit),
             ],
-            padx=12,
+            padx=8,
         ).pack(side='left', padx=2, pady=0)
         self._toolbar_menu_button(
             menu_group,
@@ -1437,7 +1437,7 @@ class PortableIDE(tk.Tk):
                 ('Экспорт кода проекта', self.export_project_hash),
                 ('Импорт кода проекта', self.import_project_hash),
             ],
-            padx=12,
+            padx=8,
         ).pack(side='left', padx=2, pady=0)
         self._toolbar_menu_button(
             menu_group,
@@ -1448,7 +1448,7 @@ class PortableIDE(tk.Tk):
                 (None, None),
                 ('Настройки', self._open_settings),
             ],
-            padx=12,
+            padx=8,
         ).pack(side='left', padx=2, pady=0)
 
         self.temp_button_group = toolbar_group(slot='temp', separator=True)
