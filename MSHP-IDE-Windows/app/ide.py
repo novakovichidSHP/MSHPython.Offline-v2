@@ -551,7 +551,10 @@ class AppButton(tk.Canvas):
             line = self.theme['line_number_fg'] if self._state == 'disabled' else (
                 border if border != bg else self.theme['border']
             )
-            self.create_line(9, self._height - 5, self._width - 9, self._height - 5, fill=line, width=2)
+            text_width = self._font_obj.measure(self._text)
+            line_x1 = max(6, (self._width - text_width) // 2)
+            line_x2 = min(self._width - 6, line_x1 + text_width)
+            self.create_line(line_x1, self._height - 5, line_x2, self._height - 5, fill=line, width=2)
         else:
             self._rounded_rect(2, 2, self._width - 2, self._height - 2, 8, fill=bg, outline=border)
         self.create_text(
