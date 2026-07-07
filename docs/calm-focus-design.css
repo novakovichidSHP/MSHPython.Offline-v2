@@ -1,9 +1,9 @@
 /*
-  МШПайтон.Оффлайн: Calm Focus visual target
+  МШПайтон.Оффлайн: visual source of truth for the UI redesign.
 
-  This file is the visual source of truth for the selected mockup. The current
-  Tk implementation maps these tokens as closely as Tk/ttk allows; it does not
-  parse this CSS at runtime.
+  Target language: https://files.informatics.ru/website/MSHPython/index.html
+  The desktop app does not parse this file at runtime. Keep this spec aligned
+  with the Tk implementation in MSHP-IDE-*/app/ide.py.
 */
 
 :root {
@@ -11,213 +11,187 @@
 
   --font-ui: "Rubik", "Segoe UI Variable", "Segoe UI", sans-serif;
   --font-code: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+  --font-ui-size: 13px;
+  --font-ui-small: 12px;
+  --font-code-size: 14px;
 
-  --app-bg: #f5f9ff;
-  --app-bg-top: #edf6ff;
-  --panel-bg: rgba(255, 255, 255, 0.96);
-  --panel-bg-soft: rgba(246, 250, 255, 0.94);
-  --toolbar-bg: rgba(234, 243, 255, 0.92);
+  --bg: #f5f9ff;
+  --bg-2: #eaf3ff;
+  --ambient-top: #d8e9ff;
+  --panel: #ffffff;
+  --panel-2: #eef4ff;
+  --toolbar: rgba(255, 255, 255, 0.85);
+  --toolbar-2: rgba(236, 243, 255, 0.95);
   --border: #c7d8f2;
-  --border-strong: #9db8df;
-
+  --border-soft: #d9e6f7;
   --text: #0f1f3a;
-  --text-muted: #5b6b84;
+  --muted: #5b6b84;
   --accent: #1c6bff;
-  --accent-hover: #1558d6;
-  --accent-cyan: #1ab5d8;
+  --accent-2: #1ab5d8;
   --danger: #e04b4b;
-  --danger-soft: #ffe4e4;
   --success: #1a8f5a;
+  --shadow: 0 18px 35px rgba(18, 54, 110, 0.18);
 
   --radius-panel: 16px;
   --radius-control: 10px;
-  --radius-small: 8px;
-  --shadow-panel: 0 18px 35px rgba(18, 54, 110, 0.14);
-  --shadow-control: 0 8px 18px rgba(28, 107, 255, 0.12);
-
-  --space-page-x: 16px;
-  --space-page-y: 12px;
-  --space-panel: 12px;
-  --toolbar-height: 58px;
-  --runbar-height: 60px;
+  --space-page-x: 20px;
+  --space-page-y: 16px;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font: 14px/1.35 var(--font-ui);
+  font: var(--font-ui-size)/1.35 var(--font-ui);
   color: var(--text);
-  background:
-    radial-gradient(circle at 18% 12%, rgba(26, 181, 216, 0.16), transparent 40%),
-    radial-gradient(circle at 78% 0%, rgba(28, 107, 255, 0.18), transparent 48%),
-    linear-gradient(180deg, var(--app-bg-top), var(--app-bg));
+  background: radial-gradient(circle at top, var(--ambient-top) 0%, var(--bg) 45%, #f7fbff 100%);
 }
 
-.app-shell {
-  display: grid;
-  grid-template-rows: 56px var(--toolbar-height) var(--runbar-height) minmax(0, 1fr) 34px;
-  min-height: 100vh;
-  background: transparent;
-}
-
-.app-header,
-.file-toolbar,
-.run-toolbar,
-.statusbar {
-  background: rgba(255, 255, 255, 0.82);
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(12px);
-}
-
-.file-toolbar,
-.run-toolbar {
+.topbar,
+.toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px var(--space-page-x);
+  gap: 16px;
+  padding: 14px 20px;
+  border: 1px solid var(--border);
+  background: var(--toolbar);
+}
+
+.brand {
+  display: grid;
+  gap: 2px;
+  min-width: 170px;
+}
+
+.brand-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.brand-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  padding: 9px 14px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.btn.danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.btn.ghost {
+  background: transparent;
 }
 
 .workspace {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) 280px;
-  gap: 16px;
+  grid-template-rows: minmax(0, 1fr) 220px;
+  gap: 12px;
   padding: var(--space-page-y) var(--space-page-x);
 }
 
-.editor-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 492px;
-  gap: 16px;
-  min-height: 0;
-}
-
-.bottom-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(360px, 1fr);
-  gap: 16px;
-  min-height: 0;
-}
-
 .panel {
-  background: var(--panel-bg);
+  background: rgba(255, 255, 255, 0.95);
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
-.panel-header,
-.tabs {
-  min-height: 44px;
+.panel-toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
-  background: var(--toolbar-bg);
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
-}
-
-.button {
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  background: var(--panel-bg);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: none;
-}
-
-.button:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #f7fbff;
-}
-
-.button-primary {
-  border: 0;
-  color: #fff;
-  background: linear-gradient(120deg, var(--accent), var(--accent-cyan));
-  box-shadow: var(--shadow-control);
-}
-
-.button-danger {
-  border: 0;
-  color: #fff;
-  background: linear-gradient(120deg, var(--danger), #ff8a7a);
-}
-
-.tab {
-  height: 44px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-bottom: 0;
-  border-radius: var(--radius-control) var(--radius-control) 0 0;
-  background: var(--panel-bg-soft);
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.tab-active {
-  background: #fff;
-  color: var(--accent);
+  background: var(--toolbar-2);
 }
 
 .editor {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr);
   min-height: 0;
-  font: 15px/1.65 var(--font-code);
-  background: #fff;
+  font: 14px/1.6 var(--font-code);
+  background: #ffffff;
 }
 
 .line-numbers {
-  padding: 16px 12px;
   color: #6f7f97;
   background: #f1f6ff;
   border-right: 1px solid var(--border);
-  text-align: right;
-}
-
-.code-surface {
-  padding: 16px;
-  color: var(--text);
-  background: #fff;
-}
-
-.active-line {
-  background: rgba(26, 181, 216, 0.16);
-  border-left: 3px solid var(--accent-cyan);
 }
 
 .console,
 .input {
   font: 13px/1.5 var(--font-code);
   color: var(--text);
-  background: #f7fbff;
+  background: rgba(243, 247, 255, 0.95);
 }
 
-.input-waiting {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 0 3px rgba(28, 107, 255, 0.18);
+.scrollbar {
+  width: 12px;
+  background: #f4f8ff;
 }
 
-.turtle-canvas {
-  width: 400px;
-  height: 400px;
-  margin: 12px auto;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-small);
+.scrollbar-thumb {
+  border: 0;
+  border-radius: 999px;
+  background: #d7e5f8;
 }
 
-/* Tk/ttk known gaps:
-   - Native titlebar and native menubar cannot be styled to match this CSS.
-   - ttk buttons do not support real border-radius, gradients, or shadows.
-   - ttk Panedwindow sash and scrollbars stay platform-native unless replaced.
-   - Backdrop blur and translucent panels are not available.
+.scrollbar-thumb:hover {
+  background: var(--accent-2);
+}
+
+.splitter {
+  width: 8px;
+  min-height: 8px;
+  background: var(--border-soft);
+}
+
+.splitter-grip {
+  width: 72px;
+  height: 10px;
+  opacity: 0.55;
+  stroke: #8fa8ca;
+  stroke-width: 2px;
+}
+
+/* Tk implementation notes:
+   - Native titlebar remains OS-native; the OS menubar is removed from the main
+     window and its commands live in themed toolbar dropdowns.
+   - Tk has no real border-radius, gradients, shadows, or backdrop-filter.
+   - Scrollbars use ttk layouts without arrow buttons; thumb and track are theme-colored.
+   - Splitters use tk.PanedWindow instead of ttk.Panedwindow so sash color and width
+     stay aligned with the panel theme while drag behavior remains native.
+   - Do not use native PanedWindow handles: on Windows they render as square blocks.
+   - Resize affordances are full sash-strip overlays positioned from sash_coord(0).
+     The visible cue is only three centered notches, but the whole 8px strip moves
+     the same sash via sash_place during drag.
+   - Use regular/medium UI text for buttons; reserve bold for brand and section labels.
+   - The current implementation uses custom tk.Canvas buttons instead of ttk.Button
+     for closer color, padding, hover, disabled, and command/state behavior.
+   - A true CustomTkinter migration would require adding the package to every
+     portable Python bundle, so it is intentionally not introduced yet.
 */

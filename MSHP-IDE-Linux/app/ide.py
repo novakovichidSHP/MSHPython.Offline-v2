@@ -48,7 +48,7 @@ try:
         UI_FONT_SIZE = 13
     elif os.name == 'nt':  # Windows
         MONO_FONT_NAME = get_best_font(['JetBrains Mono', 'Cascadia Code', 'Consolas', 'Courier New'], 'Courier New')
-        UI_FONT_NAME = get_best_font(['Rubik', 'Segoe UI Variable', 'Segoe UI'], 'Segoe UI')
+        UI_FONT_NAME = get_best_font(['Rubik', 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI'], 'Segoe UI')
         UI_FONT_SIZE = 10
     else:  # Linux
         # libtk is now Xft-capable, so we can use fontconfig names
@@ -63,10 +63,12 @@ except Exception:
 EDITOR_FONT = (MONO_FONT_NAME, 12)
 CONSOLE_FONT = (MONO_FONT_NAME, 11)
 LINE_NUMBER_FONT = (MONO_FONT_NAME, 10)
-INPUT_FONT = (MONO_FONT_NAME, 14, 'bold')
+INPUT_FONT = (MONO_FONT_NAME, 12)
 UI_FONT = (UI_FONT_NAME, UI_FONT_SIZE)
-# Use bold only where supported well
+UI_FONT_SMALL = (UI_FONT_NAME, max(UI_FONT_SIZE - 1, 9))
+UI_FONT_BUTTON = (UI_FONT_NAME, UI_FONT_SIZE)
 UI_FONT_BOLD = (UI_FONT_NAME, UI_FONT_SIZE, 'bold' if os.name == 'nt' or sys.platform == 'darwin' else 'normal')
+UI_FONT_TITLE = (UI_FONT_NAME, UI_FONT_SIZE + 1, 'bold' if os.name == 'nt' or sys.platform == 'darwin' else 'normal')
 
 def icon(e: str, t: str) -> str:
     """Returns emoji + text for Windows/Mac, or simple text for Linux"""
@@ -83,14 +85,18 @@ POLL_DELAY_MS = 50
 TURTLE_UI_PUMP_INTERVAL = 0.02
 TEMP_AUTOSAVE_DELAY_MS = 500
 
+CONTROL_CURSOR = 'pointinghand' if sys.platform == 'darwin' else 'hand2'
+
 THEMES = {
     'light': {
-        'app_bg': '#eef6ff',
+        'app_bg': '#f5f9ff',
+        'ambient_bg': '#d8e9ff',
         'panel_bg': '#ffffff',
-        'panel_alt_bg': '#f6faff',
-        'toolbar_bg': '#eaf3ff',
-        'toolbar_alt_bg': '#f4f8ff',
+        'panel_alt_bg': '#eef4ff',
+        'toolbar_bg': '#ffffff',
+        'toolbar_alt_bg': '#ecf3ff',
         'border': '#c7d8f2',
+        'border_soft': '#d9e6f7',
         'accent': '#1c6bff',
         'accent_dark': '#1558d6',
         'accent_2': '#1ab5d8',
@@ -118,8 +124,10 @@ THEMES = {
         'status_fg': '#1c6bff',
         'stderr_fg': '#e04b4b',
         'stdin_fg': '#1a8f5a',
+        'muted_fg': '#5b6b84',
         'scrollbar_bg': '#d7e5f8',
         'scrollbar_trough': '#f4f8ff',
+        'splitter_grip': '#8fa8ca',
         'check_bg': '#eaf3ff',
         'check_fg': '#0f1f3a',
         'syntax_comment': '#5b6b84',
@@ -134,11 +142,13 @@ THEMES = {
     },
     'dark': {
         'app_bg': '#101b2f',
+        'ambient_bg': '#17243a',
         'panel_bg': '#17243a',
         'panel_alt_bg': '#1d2d48',
         'toolbar_bg': '#1d2d48',
         'toolbar_alt_bg': '#16253d',
         'border': '#315078',
+        'border_soft': '#243b5d',
         'accent': '#6ea8fe',
         'accent_dark': '#4c8ff1',
         'accent_2': '#55d8ee',
@@ -166,8 +176,10 @@ THEMES = {
         'status_fg': '#6ea8fe',
         'stderr_fg': '#ff8a7a',
         'stdin_fg': '#74d69a',
+        'muted_fg': '#9aacbf',
         'scrollbar_bg': '#315078',
         'scrollbar_trough': '#16253d',
+        'splitter_grip': '#7892b8',
         'check_bg': '#16253d',
         'check_fg': '#f5f9ff',
         'syntax_comment': '#9aacbf',
@@ -181,6 +193,162 @@ THEMES = {
         'input_wait_fg': '#ffffff',
     },
 }
+
+
+class AppButton(tk.Canvas):
+    """A small Tk button with the same command/state surface as ttk.Button."""
+
+    def __init__(
+        self,
+        master,
+        *,
+        text: str,
+        command=None,
+        variant: str = 'default',
+        theme: dict[str, str],
+        font=UI_FONT_BUTTON,
+        padx: int = 10,
+        pady: int = 7,
+        min_width: int = 0,
+    ) -> None:
+        self.command = command
+        self.variant = variant
+        self.theme = theme
+        self._font = font
+        self._state = 'normal'
+        self._hover = False
+        self._padx = padx
+        self._pady = pady
+        self._min_width = min_width
+        self._text = text
+        self._font_obj = tkfont.Font(font=font)
+        self._width = 1
+        self._height = 1
+        super().__init__(
+            master,
+            bd=0,
+            highlightthickness=0,
+            takefocus=1,
+        )
+        self.bind('<Button-1>', self._on_click)
+        self.bind('<Enter>', self._on_enter)
+        self.bind('<Leave>', self._on_leave)
+        self.bind('<Return>', self._on_click)
+        self.bind('<space>', self._on_click)
+        self._resize_to_text()
+        self._apply_colors()
+
+    def _parent_bg(self) -> str:
+        try:
+            return self.master.cget('background')  # type: ignore[union-attr]
+        except Exception:
+            return self.theme['toolbar_bg']
+
+    def _resize_to_text(self) -> None:
+        self._font_obj = tkfont.Font(font=self._font)
+        self._width = max(self._min_width, self._font_obj.measure(self._text) + self._padx * 2)
+        self._height = self._font_obj.metrics('linespace') + self._pady * 2
+        tk.Canvas.configure(self, width=self._width, height=self._height)
+
+    def _rounded_rect(self, x1: int, y1: int, x2: int, y2: int, radius: int, *, fill: str, outline: str) -> None:
+        points = [
+            x1 + radius, y1,
+            x2 - radius, y1,
+            x2, y1,
+            x2, y1 + radius,
+            x2, y2 - radius,
+            x2, y2,
+            x2 - radius, y2,
+            x1 + radius, y2,
+            x1, y2,
+            x1, y2 - radius,
+            x1, y1 + radius,
+            x1, y1,
+        ]
+        self.create_polygon(points, smooth=True, fill=fill, outline=outline)
+
+    def _colors(self) -> tuple[str, str, str]:
+        theme = self.theme
+        if self._state == 'disabled':
+            return theme['toolbar_alt_bg'], theme['line_number_fg'], theme['toolbar_alt_bg']
+        if self.variant == 'primary':
+            return theme['accent_dark'] if self._hover else theme['accent'], '#ffffff', ''
+        if self.variant == 'danger':
+            return theme['stop_bg_active'] if self._hover else theme['stop_bg'], '#ffffff', ''
+        if self.variant == 'ghost':
+            bg = theme['panel_alt_bg'] if self._hover else self._parent_bg()
+            fg = theme['accent'] if self._hover else theme['editor_fg']
+            return bg, fg, theme['accent'] if self._hover else bg
+        bg = theme['panel_alt_bg'] if self._hover else self._parent_bg()
+        fg = theme['accent'] if self._hover else theme['editor_fg']
+        return bg, fg, theme['accent'] if self._hover else theme['border_soft']
+
+    def _apply_colors(self) -> None:
+        bg, fg, border = self._colors()
+        cursor = '' if self._state == 'disabled' else CONTROL_CURSOR
+        tk.Canvas.configure(self, background=self._parent_bg(), cursor=cursor)
+        self.delete('all')
+        self._rounded_rect(2, 2, self._width - 2, self._height - 2, 8, fill=bg, outline=border)
+        self.create_text(
+            self._width // 2,
+            self._height // 2,
+            text=self._text,
+            font=self._font,
+            fill=fg,
+        )
+
+    def _on_enter(self, _event=None) -> None:
+        self._hover = True
+        self._apply_colors()
+
+    def _on_leave(self, _event=None) -> None:
+        self._hover = False
+        self._apply_colors()
+
+    def _on_click(self, _event=None) -> str | None:
+        if self._state == 'disabled':
+            return 'break'
+        if self.command:
+            self.command()
+        return 'break'
+
+    def configure(self, cnf=None, **kw):  # type: ignore[override]
+        if cnf:
+            kw.update(cnf)
+        if 'text' in kw:
+            self._text = kw.pop('text')
+            self._resize_to_text()
+        if 'command' in kw:
+            self.command = kw.pop('command')
+        if 'state' in kw:
+            self._state = kw.pop('state')
+        if 'theme' in kw:
+            self.theme = kw.pop('theme')
+        if 'variant' in kw:
+            self.variant = kw.pop('variant')
+        if kw:
+            tk.Canvas.configure(self, **kw)
+        self._apply_colors()
+
+    config = configure
+
+    def cget(self, key):  # type: ignore[override]
+        if key == 'text':
+            return self._text
+        if key == 'state':
+            return self._state
+        return super().cget(key)
+
+    def state(self, states=None):
+        if not states:
+            return ('disabled',) if self._state == 'disabled' else ()
+        for state in states:
+            if state == 'disabled':
+                self._state = 'disabled'
+            elif state == '!disabled':
+                self._state = 'normal'
+        self._apply_colors()
+        return self.state()
 
 
 def read_text_file(path: Path) -> str:
@@ -413,6 +581,7 @@ class PortableIDE(tk.Tk):
         # Fixed turtle canvas size: 400x400 + padding + borders
         # Minimum window size to accommodate this
         self.minsize(820, 700)
+        self.after_idle(self._maximize_window)
         self._icon_image = None
         self._set_app_icon()
 
@@ -442,10 +611,15 @@ class PortableIDE(tk.Tk):
         self.temp_session_dir = RUNTIME_DIR / 'session'
         self.temp_assets: set[str] = set()
         self._waiting_for_input = False
-        self.temp_mode_label: ttk.Label | None = None
-        self.temp_import_button: ttk.Button | None = None
-        self.temp_show_images_button: ttk.Button | None = None
-        self.step_next_button: ttk.Button | None = None
+        self.temp_mode_label: tk.Label | None = None
+        self.brand_label: tk.Label | None = None
+        self.temp_import_button: AppButton | None = None
+        self.temp_show_images_button: AppButton | None = None
+        self.step_next_button: AppButton | None = None
+        self._app_buttons: list[AppButton] = []
+        self._toolbar_menus: list[tk.Menu] = []
+        self._paned_widgets: list[tk.PanedWindow] = []
+        self._sash_grips: list[dict[str, object]] = []
 
         self.theme = THEMES['dark' if self.dark_mode.get() else 'light']
 
@@ -455,7 +629,23 @@ class PortableIDE(tk.Tk):
         self.after(POLL_DELAY_MS, self._poll_output)
 
         self.new_tab()
+        self.after_idle(self._set_initial_pane_layout)
+        self.after(250, self._update_sash_grips)
+        self.after(750, self._update_sash_grips)
         self.after(100, self._focus_editor)
+
+    def _maximize_window(self) -> None:
+        try:
+            self.state('zoomed')
+            return
+        except tk.TclError:
+            pass
+        try:
+            width = self.winfo_screenwidth()
+            height = self.winfo_screenheight()
+            self.geometry(f'{width}x{height}+0+0')
+        except tk.TclError:
+            pass
 
     def _set_app_icon(self) -> None:
         icon_path = ROOT_DIR / 'app' / 'assets' / 'logo.png'
@@ -492,6 +682,7 @@ class PortableIDE(tk.Tk):
             foreground=theme['check_fg'],
             focuscolor=theme['toolbar_bg'],
             borderwidth=0,
+            font=UI_FONT,
         )
         style.map(
             'TCheckbutton',
@@ -509,9 +700,58 @@ class PortableIDE(tk.Tk):
             background=theme['scrollbar_bg'],
             troughcolor=theme['scrollbar_trough'],
             bordercolor=theme['border'],
-            arrowcolor=theme['editor_fg'],
+            lightcolor=theme['scrollbar_bg'],
+            darkcolor=theme['scrollbar_bg'],
+            arrowcolor=theme['scrollbar_bg'],
             relief='flat',
             borderwidth=0,
+            gripcount=0,
+            arrowsize=0,
+            width=12,
+        )
+        try:
+            style.layout(
+                'Vertical.TScrollbar',
+                [
+                    (
+                        'Vertical.Scrollbar.trough',
+                        {
+                            'sticky': 'ns',
+                            'children': [
+                                ('Vertical.Scrollbar.thumb', {'sticky': 'nswe'}),
+                            ],
+                        },
+                    )
+                ],
+            )
+            style.layout(
+                'Horizontal.TScrollbar',
+                [
+                    (
+                        'Horizontal.Scrollbar.trough',
+                        {
+                            'sticky': 'we',
+                            'children': [
+                                ('Horizontal.Scrollbar.thumb', {'sticky': 'nswe'}),
+                            ],
+                        },
+                    )
+                ],
+            )
+        except tk.TclError:
+            pass
+        style.map(
+            'TScrollbar',
+            background=[('active', theme['accent_2']), ('pressed', theme['accent'])],
+            troughcolor=[('active', theme['scrollbar_trough'])],
+        )
+        style.configure(
+            'TPanedwindow',
+            background=theme['border_soft'],
+            borderwidth=0,
+            relief='flat',
+            sashthickness=8,
+            sashwidth=8,
         )
         style.configure('Toolbar.TButton', background=theme['panel_bg'], foreground=theme['editor_fg'], padding=(12, 7), borderwidth=1, relief='flat')
         style.map(
@@ -536,7 +776,8 @@ class PortableIDE(tk.Tk):
             'TNotebook.Tab',
             background=theme['toolbar_bg'],
             foreground=theme['editor_fg'],
-            padding=(14, 7),
+            font=UI_FONT_BUTTON,
+            padding=(12, 7),
             borderwidth=0,
         )
         style.map(
@@ -545,11 +786,252 @@ class PortableIDE(tk.Tk):
             foreground=[('selected', theme['accent'])],
         )
 
+    def _frame(
+        self,
+        master,
+        *,
+        bg_key: str = 'panel_bg',
+        bordered: bool = False,
+        border_key: str = 'border',
+    ) -> tk.Frame:
+        theme = self.theme
+        return tk.Frame(
+            master,
+            background=theme[bg_key],
+            bd=0,
+            highlightthickness=1 if bordered else 0,
+            highlightbackground=theme[border_key],
+            highlightcolor=theme[border_key],
+        )
+
+    def _button(
+        self,
+        master,
+        text: str,
+        command,
+        *,
+        variant: str = 'default',
+        padx: int = 14,
+        pady: int = 7,
+    ) -> AppButton:
+        button = AppButton(
+            master,
+            text=text,
+            command=command,
+            variant=variant,
+            theme=self.theme,
+            padx=padx,
+            pady=pady,
+        )
+        self._app_buttons.append(button)
+        return button
+
+    def _toolbar_menu_button(
+        self,
+        master,
+        text: str,
+        items: list[tuple[str | None, object | None]],
+        *,
+        padx: int = 12,
+    ) -> AppButton:
+        button = self._button(master, text, None, variant='ghost', padx=padx)
+        menu = tk.Menu(button, tearoff=0)
+        for label, command in items:
+            if label is None:
+                menu.add_separator()
+            else:
+                menu.add_command(label=label, command=command)
+        self._toolbar_menus.append(menu)
+        button.configure(command=lambda b=button, m=menu: self._show_toolbar_menu(b, m))
+        return button
+
+    def _show_toolbar_menu(self, button: AppButton, menu: tk.Menu) -> None:
+        self._apply_menu_theme()
+        try:
+            menu.tk_popup(button.winfo_rootx(), button.winfo_rooty() + button.winfo_height())
+        finally:
+            menu.grab_release()
+
+    def _separator(self, master) -> tk.Frame:
+        return tk.Frame(master, width=1, background=self.theme['border'])
+
+    def _create_sash_grip(self, master, item: dict[str, object], orient: str) -> tk.Canvas:
+        grip = tk.Canvas(
+            master,
+            width=1,
+            height=1,
+            bd=0,
+            highlightthickness=0,
+            background=self.theme['border_soft'],
+            cursor='sb_v_double_arrow' if orient == 'vertical' else 'sb_h_double_arrow',
+        )
+        grip.bind('<Button-1>', lambda event, data=item: self._start_sash_drag(data, event))
+        grip.bind('<B1-Motion>', lambda event, data=item: self._drag_sash(data, event))
+        grip.bind('<ButtonRelease-1>', lambda _event: self._update_sash_grips())
+        return grip
+
+    def _add_sash_grip(self, paned: tk.PanedWindow, orient: str) -> None:
+        item: dict[str, object] = {'paned': paned, 'orient': orient}
+        item['grip'] = self._create_sash_grip(paned.master, item, orient)
+        self._sash_grips.append(item)
+
+    def _draw_sash_grip(self, grip: tk.Canvas, orient: str) -> None:
+        theme = self.theme
+        grip.configure(background=theme['border_soft'])
+        grip.delete('all')
+        width = max(grip.winfo_width(), int(grip.cget('width') or 1))
+        height = max(grip.winfo_height(), int(grip.cget('height') or 1))
+        color = theme['splitter_grip']
+        if orient == 'vertical':
+            x1 = width // 2 - 12
+            x2 = width // 2 + 12
+            for offset in (-3, 0, 3):
+                grip.create_line(x1, height // 2 + offset, x2, height // 2 + offset, fill=color, width=2, capstyle='round')
+        else:
+            y1 = height // 2 - 12
+            y2 = height // 2 + 12
+            for offset in (-3, 0, 3):
+                grip.create_line(width // 2 + offset, y1, width // 2 + offset, y2, fill=color, width=2, capstyle='round')
+
+    def _update_sash_grips(self, _event=None) -> None:
+        for item in getattr(self, '_sash_grips', []):
+            paned = item['paned']
+            grip = item['grip']
+            orient = str(item['orient'])
+            if not isinstance(paned, tk.PanedWindow) or not isinstance(grip, tk.Canvas):
+                continue
+            try:
+                panes = paned.panes()
+                if len(panes) < 2:
+                    grip.place_forget()
+                    continue
+                target_parent = paned.nametowidget(panes[1])
+                if grip.master is not target_parent:
+                    grip.destroy()
+                    grip = self._create_sash_grip(target_parent, item, orient)
+                    item['grip'] = grip
+                if orient == 'vertical':
+                    grip.configure(width=72, height=10)
+                    grip.place(
+                        x=max(0, target_parent.winfo_width() // 2 - 36),
+                        y=0,
+                    )
+                else:
+                    grip.configure(width=10, height=72)
+                    grip.place(
+                        x=0,
+                        y=max(0, target_parent.winfo_height() // 2 - 36),
+                    )
+                self._draw_sash_grip(grip, orient)
+                grip.lift()
+                grip.tkraise()
+            except Exception:
+                grip.place_forget()
+
+    def _start_sash_drag(self, item: dict[str, object], event) -> None:
+        item['drag_root_x'] = event.x_root
+        item['drag_root_y'] = event.y_root
+        paned = item['paned']
+        if isinstance(paned, tk.PanedWindow):
+            try:
+                item['drag_sash'] = paned.sash_coord(0)
+            except Exception:
+                item['drag_sash'] = (0, 0)
+
+    def _drag_sash(self, item: dict[str, object], event) -> str:
+        paned = item['paned']
+        orient = item['orient']
+        if not isinstance(paned, tk.PanedWindow):
+            return 'break'
+        start = item.get('drag_sash', (0, 0))
+        if not isinstance(start, tuple):
+            start = (0, 0)
+        dx = event.x_root - int(item.get('drag_root_x', event.x_root))
+        dy = event.y_root - int(item.get('drag_root_y', event.y_root))
+        try:
+            if orient == 'vertical':
+                paned.sash_place(0, 0, max(160, int(start[1]) + dy))
+            else:
+                paned.sash_place(0, max(180, int(start[0]) + dx), 0)
+        except Exception:
+            pass
+        self._update_sash_grips()
+        return 'break'
+
+    def _panedwindow(self, master, orient: str) -> tk.PanedWindow:
+        paned = tk.PanedWindow(
+            master,
+            orient=orient,
+            bd=0,
+            borderwidth=0,
+            relief='flat',
+            background=self.theme['border_soft'],
+            sashwidth=8,
+            sashrelief='flat',
+            sashpad=0,
+            showhandle=False,
+            opaqueresize=True,
+        )
+        self._paned_widgets.append(paned)
+        self._add_sash_grip(paned, orient)
+        paned.bind('<Configure>', self._update_sash_grips, add=True)
+        paned.bind('<B1-Motion>', self._update_sash_grips, add=True)
+        paned.bind('<ButtonRelease-1>', self._update_sash_grips, add=True)
+        return paned
+
+    def _set_initial_pane_layout(self) -> None:
+        try:
+            self.update_idletasks()
+            height = self.paned.winfo_height()
+            if height > 420:
+                self.paned.sash_place(0, 0, height - 250)
+            width = self.bottom_paned.winfo_width()
+            if width > 700:
+                self.bottom_paned.sash_place(0, int(width * 0.55), 0)
+            self._update_sash_grips()
+        except Exception:
+            pass
+
     def _apply_theme(self) -> None:
         self.theme = THEMES['dark' if self.dark_mode.get() else 'light']
         self._apply_style()
 
         theme = self.theme
+        for widget, bg_key in (
+            (getattr(self, 'file_toolbar', None), 'toolbar_bg'),
+            (getattr(self, 'brand_frame', None), 'toolbar_bg'),
+            (getattr(self, 'run_toolbar', None), 'toolbar_alt_bg'),
+            (getattr(self, 'paned_shell', None), 'app_bg'),
+            (getattr(self, 'editor_shell', None), 'panel_bg'),
+            (getattr(self, 'bottom_shell', None), 'panel_bg'),
+            (getattr(self, 'input_header', None), 'toolbar_alt_bg'),
+            (getattr(self, 'input_frame', None), 'panel_bg'),
+            (getattr(self, 'input_content', None), 'panel_bg'),
+        ):
+            if widget:
+                widget.configure(background=theme[bg_key])
+        for widget in (
+            getattr(self, 'file_toolbar', None),
+            getattr(self, 'run_toolbar', None),
+            getattr(self, 'editor_shell', None),
+            getattr(self, 'bottom_shell', None),
+            getattr(self, 'input_frame', None),
+        ):
+            if widget:
+                widget.configure(highlightbackground=theme['border'], highlightcolor=theme['border'])
+        for button in getattr(self, '_app_buttons', []):
+            button.configure(theme=theme)
+        for sep in getattr(self, '_separators', []):
+            sep.configure(background=theme['border'])
+        for paned in getattr(self, '_paned_widgets', []):
+            paned.configure(background=theme['border_soft'])
+        self._update_sash_grips()
+        if self.brand_label:
+            self.brand_label.configure(background=theme['toolbar_bg'], foreground=theme['editor_fg'])
+        if self.temp_mode_label:
+            self.temp_mode_label.configure(background=theme['toolbar_bg'], foreground=theme['editor_fg'])
+        if hasattr(self, 'run_label'):
+            self.run_label.configure(background=theme['toolbar_alt_bg'], foreground=theme['editor_fg'])
         self.console.configure(
             background=theme['console_bg'],
             foreground=theme['console_fg'],
@@ -575,11 +1057,14 @@ class PortableIDE(tk.Tk):
             highlightcolor=theme['accent'],
             selectbackground=theme['selection_bg'],
             selectforeground=theme['selection_fg'],
-            relief='solid',
-            bd=1,
+            relief='flat',
+            bd=0,
+            highlightthickness=1,
         )
         if hasattr(self, 'input_shortcuts'):
-            self.input_shortcuts.configure(background=theme['toolbar_bg'], foreground=theme['line_number_fg'])
+            self.input_shortcuts.configure(background=theme['toolbar_alt_bg'], foreground=theme['line_number_fg'])
+        if hasattr(self, 'input_label'):
+            self.input_label.configure(background=theme['toolbar_alt_bg'], foreground=theme['editor_fg'])
 
         for tab in self.tabs_by_frame.values():
             tab.apply_theme()
@@ -595,80 +1080,142 @@ class PortableIDE(tk.Tk):
             self.settings_window.configure(background=theme['app_bg'])
 
     def _build_ui(self) -> None:
-        self._create_menu()
+        self._separators: list[tk.Frame] = []
 
-        file_toolbar = ttk.Frame(self, style='Toolbar.TFrame')
-        file_toolbar.pack(fill='x', padx=14, pady=(12, 0))
-        ttk.Button(file_toolbar, text=icon('🆕', 'Новый'), command=self.new_tab, style='Toolbar.TButton').pack(
-            side='left', padx=3, pady=6
+        file_toolbar = self._frame(self, bg_key='toolbar_bg', bordered=True)
+        self.file_toolbar = file_toolbar
+        file_toolbar.pack(fill='x', padx=16, pady=(14, 0), ipady=2)
+        brand = tk.Frame(file_toolbar, background=self.theme['toolbar_bg'])
+        self.brand_frame = brand
+        brand.pack(side='left', padx=(10, 10), pady=6)
+        self.brand_label = tk.Label(
+            brand,
+            text='МШПайтон.Оффлайн',
+            font=UI_FONT_TITLE,
+            background=self.theme['toolbar_bg'],
+            foreground=self.theme['editor_fg'],
         )
-        ttk.Button(file_toolbar, text=icon('📂', 'Открыть'), command=self.open_file, style='Toolbar.TButton').pack(
-            side='left', padx=3, pady=6
-        )
-        ttk.Button(file_toolbar, text=icon('💾', 'Сохранить'), command=self.save_file, style='Toolbar.TButton').pack(
-            side='left', padx=3, pady=6
-        )
-        ttk.Button(file_toolbar, text=icon('💾', 'Сохранить все'), command=self.save_all, style='Toolbar.TButton').pack(
-            side='left', padx=3, pady=6
-        )
-        ttk.Separator(file_toolbar, orient='vertical').pack(side='left', fill='y', padx=8, pady=8)
-        ttk.Button(file_toolbar, text=icon('🗜️', 'Архив'), command=self.save_archive, style='Toolbar.TButton').pack(
-            side='left', padx=3, pady=6
-        )
-        ttk.Button(
+        self.brand_label.pack(anchor='w')
+        self.temp_mode_label = tk.Label(
             file_toolbar,
-            text=icon('✏️', 'Переименовать'),
-            command=self.rename_current_tab,
-            style='Toolbar.TButton',
-        ).pack(side='left', padx=3, pady=6)
-        ttk.Separator(file_toolbar, orient='vertical').pack(side='left', fill='y', padx=8, pady=8)
-        ttk.Button(file_toolbar, text=icon('❌', 'Закрыть'), command=self.close_current_tab, style='Toolbar.TButton').pack(
-            side='left', padx=3, pady=6
+            text='Режим: Обычный',
+            font=UI_FONT_BUTTON,
+            background=self.theme['toolbar_bg'],
+            foreground=self.theme['editor_fg'],
         )
-        ttk.Separator(file_toolbar, orient='vertical').pack(side='left', fill='y', padx=8, pady=8)
-        self.temp_import_button = ttk.Button(
+        self.temp_mode_label.pack(side='right', padx=(10, 10), pady=6)
+        self._button(file_toolbar, 'Новый', self.new_tab, padx=12).pack(
+            side='left', padx=2, pady=5
+        )
+        self._button(file_toolbar, 'Открыть', self.open_file, padx=12).pack(
+            side='left', padx=2, pady=5
+        )
+        self._button(file_toolbar, 'Сохранить', self.save_file, padx=12).pack(
+            side='left', padx=2, pady=5
+        )
+        self._button(file_toolbar, 'Сохранить все', self.save_all, padx=12).pack(
+            side='left', padx=2, pady=5
+        )
+        self._toolbar_menu_button(
             file_toolbar,
-            text=icon('🖼', 'Импорт картинок'),
-            command=self.import_temp_images,
-            style='Toolbar.TButton',
-        )
-        self.temp_show_images_button = ttk.Button(
+            'Файл',
+            [
+                ('Сохранить как...', self.save_file_as),
+                (None, None),
+                ('Перезапустить приложение', self.restart_app),
+                ('Выход', self.on_exit),
+            ],
+            padx=12,
+        ).pack(side='left', padx=2, pady=5)
+        self._toolbar_menu_button(
             file_toolbar,
-            text=icon('📂', 'Список картинок'),
-            command=self.show_temp_images_list,
-            style='Toolbar.TButton',
+            'Полезное',
+            [
+                ('Сделать отступ', self.indent_selection),
+                ('Очистить консоль', self.clear_console),
+                (None, None),
+                ('Экспорт кода проекта', self.export_project_hash),
+                ('Импорт кода проекта', self.import_project_hash),
+                (None, None),
+                ('Настройки', self._open_settings),
+            ],
+            padx=12,
+        ).pack(side='left', padx=2, pady=5)
+        sep = self._separator(file_toolbar)
+        self._separators.append(sep)
+        sep.pack(side='left', fill='y', padx=6, pady=9)
+        self._button(file_toolbar, 'Архив', self.save_archive, padx=12).pack(
+            side='left', padx=2, pady=5
         )
-        self.temp_mode_label = ttk.Label(file_toolbar, text='Режим: Обычный', font=UI_FONT_BOLD)
-        self.temp_mode_label.pack(side='right', padx=10, pady=6)
-
-        run_toolbar = ttk.Frame(self, style='Runbar.TFrame')
-        run_toolbar.pack(fill='x', padx=14, pady=(6, 0))
-        ttk.Label(run_toolbar, text='Запуск', font=UI_FONT_BOLD).pack(side='left', padx=(10, 8), pady=7)
-        self.run_button = ttk.Button(
+        self._button(
+            file_toolbar,
+            'Переименовать',
+            self.rename_current_tab,
+            padx=12,
+        ).pack(side='left', padx=2, pady=5)
+        sep = self._separator(file_toolbar)
+        self._separators.append(sep)
+        sep.pack(side='left', fill='y', padx=6, pady=9)
+        self._button(file_toolbar, 'Закрыть', self.close_current_tab, variant='ghost', padx=12).pack(
+            side='left', padx=2, pady=5
+        )
+        sep = self._separator(file_toolbar)
+        self._separators.append(sep)
+        sep.pack(side='left', fill='y', padx=6, pady=9)
+        self.temp_import_button = self._button(
+            file_toolbar,
+            'Импорт картинок',
+            self.import_temp_images,
+            variant='ghost',
+            padx=16,
+        )
+        self.temp_show_images_button = self._button(
+            file_toolbar,
+            'Список картинок',
+            self.show_temp_images_list,
+            variant='ghost',
+            padx=16,
+        )
+        run_toolbar = self._frame(self, bg_key='toolbar_alt_bg', bordered=True)
+        self.run_toolbar = run_toolbar
+        run_toolbar.pack(fill='x', padx=16, pady=(8, 0), ipady=2)
+        self.run_label = tk.Label(
             run_toolbar,
-            text=icon('▶️', 'Запустить (F5)'),
-            command=self.run_current,
-            style='Run.TButton',
+            text='Запуск',
+            font=UI_FONT_BUTTON,
+            background=self.theme['toolbar_alt_bg'],
+            foreground=self.theme['editor_fg'],
+        )
+        self.run_label.pack(side='left', padx=(12, 8), pady=7)
+        self.run_button = self._button(
+            run_toolbar,
+            'Запустить (F5)',
+            self.run_current,
+            variant='primary',
+            padx=18,
         )
         self.run_button.pack(side='left', padx=3, pady=6)
-        ttk.Button(
+        self._button(
             run_toolbar,
-            text=icon('⏭', 'Построчно'),
-            command=self.run_current_step,
-            style='Run.TButton',
+            'Построчно',
+            self.run_current_step,
+            variant='primary',
+            padx=18,
         ).pack(side='left', padx=3, pady=6)
-        self.stop_button = ttk.Button(
+        self.stop_button = self._button(
             run_toolbar,
-            text=icon('⏹', 'Остановить'),
-            command=self.stop_process,
-            style='Stop.TButton',
+            'Остановить',
+            self.stop_process,
+            variant='danger',
+            padx=18,
         )
         self.stop_button.pack(side='left', padx=3, pady=6)
-        self.step_next_button = ttk.Button(
+        self.step_next_button = self._button(
             run_toolbar,
-            text='➡ Далее',
-            command=self.step_next,
-            style='Toolbar.TButton',
+            'Далее',
+            self.step_next,
+            variant='ghost',
+            padx=16,
         )
 
         ttk.Checkbutton(
@@ -678,18 +1225,21 @@ class PortableIDE(tk.Tk):
             command=self._apply_theme,
         ).pack(side='right', padx=10, pady=7)
 
-        self.paned = ttk.Panedwindow(self, orient='vertical')
-        self.paned.pack(fill='both', expand=True, padx=14, pady=(10, 14))
+        self.paned_shell = self._frame(self, bg_key='app_bg')
+        self.paned_shell.pack(fill='both', expand=True, padx=16, pady=(12, 16))
+        self.paned = self._panedwindow(self.paned_shell, orient='vertical')
+        self.paned.pack(fill='both', expand=True)
 
-        editor_frame = ttk.Frame(self.paned, style='Editor.TFrame')
-        self.editor_paned = ttk.Panedwindow(editor_frame, orient='horizontal')
-        self.editor_paned.pack(fill='both', expand=True, padx=1, pady=1)
+        editor_frame = self._frame(self.paned, bg_key='panel_bg', bordered=True)
+        self.editor_shell = editor_frame
+        self.editor_paned = self._panedwindow(editor_frame, orient='horizontal')
+        self.editor_paned.pack(fill='both', expand=True, padx=10, pady=10)
 
         editor_main = ttk.Frame(self.editor_paned, style='Editor.TFrame')
         self.notebook = ttk.Notebook(editor_main)
         self.notebook.pack(fill='both', expand=True)
         self.notebook.bind('<<NotebookTabChanged>>', self._on_tab_changed)
-        self.editor_paned.add(editor_main, weight=3)
+        self.editor_paned.add(editor_main, stretch='always', minsize=360)
 
         # Turtle frame: fixed size, not resizable
         self.turtle_frame = ttk.Frame(self.editor_paned, style='Editor.TFrame')
@@ -704,12 +1254,13 @@ class PortableIDE(tk.Tk):
         # Bind to prevent sash movement when turtle is visible
         self.editor_paned.bind('<Button-1>', self._on_paned_click, add=True)
 
-        self.paned.add(editor_frame, weight=3)
+        self.paned.add(editor_frame, stretch='always', minsize=360)
 
         # Bottom panel with console and input side by side
-        bottom_frame = ttk.Frame(self.paned, style='Editor.TFrame')
-        self.bottom_paned = ttk.Panedwindow(bottom_frame, orient='horizontal')
-        self.bottom_paned.pack(fill='both', expand=True, padx=1, pady=1)
+        bottom_frame = self._frame(self.paned, bg_key='panel_bg', bordered=True)
+        self.bottom_shell = bottom_frame
+        self.bottom_paned = self._panedwindow(bottom_frame, orient='horizontal')
+        self.bottom_paned.pack(fill='both', expand=True, padx=10, pady=10)
 
         console_frame = ttk.Frame(self.bottom_paned, style='Editor.TFrame')
         self.console = tk.Text(
@@ -732,34 +1283,44 @@ class PortableIDE(tk.Tk):
         self.console.configure(yscrollcommand=console_scroll.set)
         console_scroll.pack(fill='y', side='right')
 
-        self.bottom_paned.add(console_frame, weight=2)
+        self.bottom_paned.add(console_frame, stretch='always', minsize=260)
 
         # Input frame on the right
-        self.input_frame = ttk.Frame(self.bottom_paned, style='Editor.TFrame')
+        self.input_frame = self._frame(self.bottom_paned, bg_key='panel_bg', bordered=True)
+        input_content = self._frame(self.input_frame, bg_key='panel_bg')
+        self.input_content = input_content
+        input_content.pack(side='left', fill='both', expand=True)
         
         # Input header with title and shortcuts
-        input_header = ttk.Frame(self.input_frame, style='Toolbar.TFrame')
+        input_header = self._frame(input_content, bg_key='toolbar_alt_bg')
+        self.input_header = input_header
         input_header.pack(side='top', anchor='w', fill='x', padx=8, pady=(8, 2))
         
-        self.input_label = ttk.Label(input_header, text='Ввод:', style='Toolbar.TLabel')
+        self.input_label = tk.Label(
+            input_header,
+            text='Ввод:',
+            font=UI_FONT_BUTTON,
+            background=self.theme['toolbar_alt_bg'],
+            foreground=self.theme['editor_fg'],
+        )
         self.input_label.pack(side='left', anchor='w')
         
-        self.input_shortcuts = ttk.Label(
+        self.input_shortcuts = tk.Label(
             input_header, 
             text='Enter — отправить  •  Ctrl+Enter — новая строка',
-            font=UI_FONT,
+            font=UI_FONT_SMALL,
             foreground=self.theme['line_number_fg'],
-            style='Toolbar.TLabel',
+            background=self.theme['toolbar_alt_bg'],
         )
         self.input_shortcuts.pack(side='left', padx=(12, 0), anchor='w')
         
         self.input_text = tk.Text(
-            self.input_frame,
+            input_content,
             height=6,
             wrap='word',
             font=INPUT_FONT,
-            relief='solid',
-            bd=1,
+            relief='flat',
+            bd=0,
             highlightthickness=1,
             insertwidth=3,
             insertbackground=self.theme['input_fg'],
@@ -771,8 +1332,8 @@ class PortableIDE(tk.Tk):
         self.input_text.bind('<FocusOut>', self._on_input_focus_out)
         self._bind_input_shortcuts()
         
-        self.bottom_paned.add(self.input_frame, weight=1)
-        self.paned.add(bottom_frame, weight=1)
+        self.bottom_paned.add(self.input_frame, stretch='always', minsize=320)
+        self.paned.add(bottom_frame, stretch='never', minsize=160)
 
         self.tabs_by_frame: dict[str, EditorTab] = {}
         self._apply_theme()
@@ -1061,17 +1622,18 @@ class PortableIDE(tk.Tk):
         # кликнуть повторно.
         running = self._is_running() or self._restart_pending
         if running:
-            self.run_button.configure(text=icon('🔁', 'Перезапустить (F5)'))
+            self.run_button.configure(text='Перезапустить (F5)')
             self.stop_button.state(['!disabled'])
         else:
-            self.run_button.configure(text=icon('▶️', 'Запустить (F5)'))
+            self.run_button.configure(text='Запустить (F5)')
             self.stop_button.state(['disabled'])
 
     def _apply_menu_theme(self) -> None:
-        if not hasattr(self, 'menubar'):
-            return
         theme = self.theme
-        for menu in (self.menubar, self.file_menu, self.run_menu, self.tools_menu):
+        menus = list(getattr(self, '_toolbar_menus', []))
+        if hasattr(self, 'menubar'):
+            menus.extend([self.menubar, self.file_menu, self.run_menu, self.tools_menu])
+        for menu in menus:
             menu.configure(
                 background=theme['menu_bg'],
                 foreground=theme['menu_fg'],
@@ -1378,8 +1940,11 @@ class PortableIDE(tk.Tk):
         self.input_text.configure(
             background=self.theme['input_wait_bg'],
             foreground=self.theme['input_wait_fg'],
-            relief='solid',
-            bd=2,
+            relief='flat',
+            bd=0,
+            highlightbackground=self.theme['accent'],
+            highlightcolor=self.theme['accent'],
+            highlightthickness=1,
         )
         self.input_text.focus_set()
 
@@ -1414,8 +1979,11 @@ class PortableIDE(tk.Tk):
         self.input_text.configure(
             background=self.theme['input_bg'],
             foreground=self.theme['input_fg'],
-            relief='solid',
-            bd=1,
+            relief='flat',
+            bd=0,
+            highlightbackground=self.theme['border'],
+            highlightcolor=self.theme['accent'],
+            highlightthickness=1,
         )
         self.input_label.configure(text='Ввод:')
 
@@ -2282,13 +2850,15 @@ class PortableIDE(tk.Tk):
 
     def _show_turtle_panel(self, show: bool) -> None:
         if show and not self.turtle_visible:
-            self.editor_paned.add(self.turtle_frame, weight=0)
+            self.editor_paned.add(self.turtle_frame, stretch='never', minsize=424)
             self.turtle_visible = True
             # Lock the sash to prevent resizing
             self.after(10, lambda: self._lock_turtle_sash())
+            self.after_idle(self._update_sash_grips)
         elif not show and self.turtle_visible:
             self.editor_paned.forget(self.turtle_frame)
             self.turtle_visible = False
+            self.after_idle(self._update_sash_grips)
 
     def _lock_turtle_sash(self) -> None:
         """Lock the sash between editor and turtle panel to prevent resizing."""
