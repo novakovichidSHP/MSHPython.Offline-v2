@@ -1416,7 +1416,7 @@ class PortableIDE(tk.Tk):
             side='left', padx=2, pady=0
         )
 
-        menu_group = toolbar_group(slot='menu')
+        menu_group = toolbar_group(slot='menu', padx=0)
         self._toolbar_menu_button(
             menu_group,
             'Файл',
