@@ -1394,7 +1394,7 @@ class PortableIDE(tk.Tk):
         brand = tk.Frame(file_toolbar, background=self.theme['toolbar_bg'])
         self._toolbar_groups.append(brand)
         self.brand_frame = brand
-        file_toolbar.add(brand, padx=10, pady=6, slot='brand')
+        file_toolbar.add(brand, padx=8, pady=6, slot='brand')
         self.brand_logo_label = ToolbarLogo(brand, theme=self.theme)
         self.brand_logo_label.pack(side='left', padx=(0, 9))
         self.brand_label = tk.Label(
@@ -1406,24 +1406,24 @@ class PortableIDE(tk.Tk):
         )
         self.brand_label.pack(side='left')
 
-        file_group = toolbar_group(slot='file')
+        file_group = toolbar_group(slot='file', padx=8)
         self._button(file_group, 'Новый', self.new_tab, padx=12).pack(side='left', padx=2, pady=0)
         self._button(file_group, 'Открыть', self.open_file, padx=12).pack(side='left', padx=2, pady=0)
         self._button(file_group, 'Сохранить', self.save_file, padx=12).pack(side='left', padx=2, pady=0)
         self._button(file_group, 'Сохранить все', self.save_all, padx=12).pack(side='left', padx=2, pady=0)
 
-        tab_group = toolbar_group(slot='tab', separator=True)
+        tab_group = toolbar_group(slot='tab', separator=True, padx=8)
         self._button(
             tab_group,
             'Переименовать',
             self.rename_current_tab,
             padx=12,
         ).pack(side='left', padx=2, pady=0)
-        self._button(tab_group, 'Закрыть', self.close_current_tab, padx=12).pack(
+        self._button(tab_group, 'Закрыть', self.close_current_tab, padx=2).pack(
             side='left', padx=2, pady=0
         )
 
-        menu_group = toolbar_group(slot='menu', padx=0)
+        menu_group = toolbar_group(slot='menu', padx=8)
         self._toolbar_menu_button(
             menu_group,
             'Файл',
@@ -1458,7 +1458,7 @@ class PortableIDE(tk.Tk):
             padx=8,
         ).pack(side='left', padx=2, pady=0)
 
-        self.temp_button_group = toolbar_group(slot='temp', separator=True)
+        self.temp_button_group = toolbar_group(slot='temp', separator=True, padx=8)
         self.temp_import_button = self._button(
             self.temp_button_group,
             'Импорт картинок',
