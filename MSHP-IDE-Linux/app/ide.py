@@ -277,6 +277,7 @@ class FlowToolbar(tk.Frame):
         slot: str | None = None,
         rows: dict[str, int] | None = None,
         separator: tk.Widget | None = None,
+        separator_pad: tuple[int, int] = (0, 10),
     ) -> tk.Widget:
         self._items.append({
             'widget': widget,
@@ -286,6 +287,7 @@ class FlowToolbar(tk.Frame):
             'slot': slot,
             'rows': rows,
             'separator': separator,
+            'separator_pad': separator_pad,
             'visible': True,
         })
         widget.bind('<Configure>', lambda _event: self._schedule_layout(), add=True)
@@ -357,7 +359,7 @@ class FlowToolbar(tk.Frame):
                     if index == 0:
                         separator.pack_forget()
                     elif not separator.winfo_ismapped():
-                        separator.pack(side='left', fill='y', padx=(0, 10), pady=4)
+                        separator.pack(side='left', fill='y', padx=item.get('separator_pad', (0, 10)), pady=0)
                 place_args = {'x': x + padx, 'y': y + (row_height - item_height) // 2 + pady}
                 if item.get('fill_y'):
                     place_args['height'] = max(1, row_height - pady * 2)
@@ -1373,18 +1375,20 @@ class PortableIDE(tk.Tk):
         self.file_toolbar = file_toolbar
         file_toolbar.pack(fill='x', padx=16, pady=(14, 0))
 
-        def toolbar_group(*, slot: str, padx: int = 4, separator: bool = False) -> tk.Frame:
+        def toolbar_group(
+            *, slot: str, padx: int = 4, separator: bool = False, separator_pad: tuple[int, int] = (0, 10)
+        ) -> tk.Frame:
             group = tk.Frame(file_toolbar, background=self.theme['toolbar_bg'], bd=0, highlightthickness=0)
             self._toolbar_groups.append(group)
             separator_line = None
             if separator:
                 separator_line = tk.Frame(group, width=1, background=self.theme['border'])
                 self._separators.append(separator_line)
-                separator_line.pack(side='left', fill='y', padx=(0, 10), pady=4)
+                separator_line.pack(side='left', fill='y', padx=separator_pad, pady=0)
             content = tk.Frame(group, background=self.theme['toolbar_bg'], bd=0, highlightthickness=0)
             self._toolbar_groups.append(content)
             content.pack(side='left')
-            file_toolbar.add(group, padx=padx, pady=6, slot=slot, separator=separator_line)
+            file_toolbar.add(group, padx=padx, pady=6, slot=slot, separator=separator_line, separator_pad=separator_pad)
             return content
 
         brand = tk.Frame(file_toolbar, background=self.theme['toolbar_bg'])
@@ -1419,7 +1423,7 @@ class PortableIDE(tk.Tk):
             side='left', padx=2, pady=0
         )
 
-        menu_group = toolbar_group(slot='menu', padx=0)
+        menu_group = toolbar_group(slot='menu', padx=0, separator=True, separator_pad=(10, 10))
         self._toolbar_menu_button(
             menu_group,
             'Файл',
