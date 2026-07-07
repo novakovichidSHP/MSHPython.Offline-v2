@@ -277,7 +277,7 @@ class FlowToolbar(tk.Frame):
         slot: str | None = None,
         rows: dict[str, int] | None = None,
         separator: tk.Widget | None = None,
-        separator_pad: tuple[int, int] = (0, 10),
+        separator_pad: tuple[int, int] = (0, 8),
     ) -> tk.Widget:
         self._items.append({
             'widget': widget,
@@ -346,7 +346,7 @@ class FlowToolbar(tk.Frame):
         y = 0
         for row in rows:
             row_width = int(row['width'])
-            x = max(0, (width - row_width) // 2)
+            x = 0
             row_height = int(row['height'])
             for index, entry in enumerate(row['items']):
                 item = entry['item']
@@ -1143,8 +1143,8 @@ class PortableIDE(tk.Tk):
     def _create_sash_grip(self, master, item: dict[str, object], orient: str) -> tk.Canvas:
         grip = tk.Canvas(
             master,
-            width=1,
-            height=1,
+            width=72,
+            height=10,
             bd=0,
             highlightthickness=0,
             background=self.theme['border_soft'],
@@ -1376,7 +1376,7 @@ class PortableIDE(tk.Tk):
         file_toolbar.pack(fill='x', padx=16, pady=(14, 0))
 
         def toolbar_group(
-            *, slot: str, padx: int = 4, separator: bool = False, separator_pad: tuple[int, int] = (0, 10)
+            *, slot: str, padx: int = 4, separator: bool = False, separator_pad: tuple[int, int] = (0, 8)
         ) -> tk.Frame:
             group = tk.Frame(file_toolbar, background=self.theme['toolbar_bg'], bd=0, highlightthickness=0)
             self._toolbar_groups.append(group)
