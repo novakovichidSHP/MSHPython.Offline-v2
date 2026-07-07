@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import builtins
+import ctypes
 import io
 import json
 import keyword
@@ -24,6 +25,30 @@ import tkinter.font as tkfont
 ROOT_DIR = Path(__file__).resolve().parent.parent
 RUNTIME_DIR = ROOT_DIR / '.runtime'
 PYTHON_DIR = ROOT_DIR / 'python'
+
+
+def enable_native_dpi_rendering() -> None:
+    if os.name != 'nt':
+        return
+    try:
+        awareness_context = ctypes.c_void_p(-4)  # PER_MONITOR_AWARE_V2
+        if ctypes.windll.user32.SetProcessDpiAwarenessContext(awareness_context):
+            return
+    except Exception:
+        pass
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+        return
+    except Exception:
+        pass
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
+
+enable_native_dpi_rendering()
+
 
 def get_best_font(families: list[str], default: str = 'monospace') -> str:
     try:
@@ -195,6 +220,237 @@ THEMES = {
 }
 
 
+class ToolbarLogo(tk.Label):
+    def __init__(self, master, *, theme: dict[str, str]) -> None:
+        self.theme = theme
+        logo_path = ROOT_DIR / 'app' / 'assets' / 'toolbar_logo@2x.png'
+        if not logo_path.exists():
+            logo_path = ROOT_DIR / 'app' / 'assets' / 'toolbar_logo.png'
+        self._source_image = tk.PhotoImage(file=str(logo_path))
+        self._image = (
+            self._source_image.subsample(2, 2)
+            if self._source_image.width() >= 144 and self._source_image.height() >= 88
+            else self._source_image
+        )
+        super().__init__(
+            master,
+            image=self._image,
+            background=theme['toolbar_bg'],
+            borderwidth=0,
+        )
+
+    def configure(self, cnf=None, **kw):  # type: ignore[override]
+        if cnf:
+            kw.update(cnf)
+        if 'theme' in kw:
+            self.theme = kw.pop('theme')
+            kw.setdefault('background', self.theme['toolbar_bg'])
+        if kw:
+            tk.Label.configure(self, **kw)
+
+    config = configure
+
+
+class FlowToolbar(tk.Frame):
+    _BREAKPOINTS = {'medium': 720, 'wide': 1160}
+
+    def __init__(self, master, *, background: str, border: str) -> None:
+        super().__init__(
+            master,
+            background=background,
+            bd=0,
+            highlightthickness=1,
+            highlightbackground=border,
+            highlightcolor=border,
+        )
+        self._items: list[dict[str, object]] = []
+        self._layout_pending = False
+        self.bind('<Configure>', lambda _event: self._schedule_layout(), add=True)
+
+    def add(
+        self,
+        widget: tk.Widget,
+        *,
+        padx: int = 2,
+        pady: int = 5,
+        fill_y: bool = False,
+        slot: str | None = None,
+        rows: dict[str, int] | None = None,
+        separator: tk.Widget | None = None,
+    ) -> tk.Widget:
+        self._items.append({
+            'widget': widget,
+            'padx': padx,
+            'pady': pady,
+            'fill_y': fill_y,
+            'slot': slot,
+            'rows': rows,
+            'separator': separator,
+            'visible': True,
+        })
+        widget.bind('<Configure>', lambda _event: self._schedule_layout(), add=True)
+        self._schedule_layout()
+        return widget
+
+    def show(self, widget: tk.Widget) -> None:
+        item = self._find_item(widget)
+        if item:
+            item['visible'] = True
+            self._schedule_layout()
+
+    def hide(self, widget: tk.Widget) -> None:
+        item = self._find_item(widget)
+        if item:
+            item['visible'] = False
+            widget.place_forget()
+            self._schedule_layout()
+
+    def _find_item(self, widget: tk.Widget) -> dict[str, object] | None:
+        for item in self._items:
+            if item['widget'] is widget:
+                return item
+        return None
+
+    def _schedule_layout(self) -> None:
+        if self._layout_pending:
+            return
+        self._layout_pending = True
+        self.after_idle(self._layout_items)
+
+    def _layout_items(self) -> None:
+        self._layout_pending = False
+        width = max(self.winfo_width(), 1)
+        entries: list[dict[str, object]] = []
+        for item in self._items:
+            widget = item['widget']
+            if not item['visible']:
+                continue
+            padx = int(item['padx'])
+            pady = int(item['pady'])
+            item_width = widget.winfo_reqwidth() + padx * 2
+            item_height = widget.winfo_reqheight() + pady * 2
+            entries.append({
+                'item': item,
+                'width': item_width,
+                'height': item_height,
+            })
+        if any(entry['item'].get('rows') for entry in entries):
+            rows = self._layout_breakpoint_rows(entries, width)
+        elif any(entry['item'].get('slot') for entry in entries):
+            rows = self._layout_media_rows(entries, width)
+        else:
+            rows = self._layout_wrapped_rows(entries, width)
+
+        y = 0
+        for row in rows:
+            row_width = int(row['width'])
+            x = max(0, (width - row_width) // 2)
+            row_height = int(row['height'])
+            for index, entry in enumerate(row['items']):
+                item = entry['item']
+                widget = item['widget']
+                padx = int(item['padx'])
+                pady = int(item['pady'])
+                item_height = int(entry['height'])
+                separator = item.get('separator')
+                if isinstance(separator, tk.Widget):
+                    if index == 0:
+                        separator.pack_forget()
+                    elif not separator.winfo_ismapped():
+                        separator.pack(side='left', fill='y', padx=(0, 10), pady=4)
+                place_args = {'x': x + padx, 'y': y + (row_height - item_height) // 2 + pady}
+                if item.get('fill_y'):
+                    place_args['height'] = max(1, row_height - pady * 2)
+                widget.place(**place_args)
+                x += int(entry['width'])
+            y += row_height
+
+        self.configure(height=max(y, 1))
+
+    def _layout_wrapped_rows(
+        self, entries: list[dict[str, object]], width: int
+    ) -> list[dict[str, object]]:
+        rows: list[dict[str, object]] = []
+        current_row: list[dict[str, object]] = []
+        current_width = 0
+        current_height = 0
+        for entry in entries:
+            item_width = int(entry['width'])
+            item_height = int(entry['height'])
+            if current_row and current_width + item_width > width:
+                rows.append({'items': current_row, 'width': current_width, 'height': current_height})
+                current_row = []
+                current_width = 0
+                current_height = 0
+            current_row.append(entry)
+            current_width += item_width
+            current_height = max(current_height, item_height)
+        if current_row:
+            rows.append({'items': current_row, 'width': current_width, 'height': current_height})
+        return rows
+
+    def _layout_breakpoint_rows(
+        self, entries: list[dict[str, object]], width: int
+    ) -> list[dict[str, object]]:
+        mode = self._mode_for_width(width)
+        rows_by_index: dict[int, list[dict[str, object]]] = {}
+        for entry in entries:
+            item = entry['item']
+            rows = item.get('rows')
+            if isinstance(rows, dict):
+                row_index = int(rows.get(mode, rows.get('wide', 0)))
+            else:
+                row_index = 0
+            rows_by_index.setdefault(row_index, []).append(entry)
+        return [self._fixed_row(rows_by_index[index]) for index in sorted(rows_by_index)]
+
+    def _layout_media_rows(
+        self, entries: list[dict[str, object]], width: int
+    ) -> list[dict[str, object]]:
+        if width >= self._BREAKPOINTS['wide']:
+            slot_rows = (('brand', 'file', 'tab', 'project', 'temp'),)
+        elif width >= self._BREAKPOINTS['medium']:
+            slot_rows = (
+                ('brand', 'file'),
+                ('tab', 'project', 'temp'),
+            )
+        else:
+            slot_rows = (
+                ('brand',),
+                ('file',),
+                ('tab', 'project', 'temp'),
+            )
+
+        used: set[int] = set()
+        rows: list[dict[str, object]] = []
+        for slots in slot_rows:
+            row_entries = [
+                entry for entry in entries
+                if entry['item'].get('slot') in slots and id(entry) not in used
+            ]
+            used.update(id(entry) for entry in row_entries)
+            if row_entries:
+                rows.append(self._fixed_row(row_entries))
+        remaining = [entry for entry in entries if id(entry) not in used]
+        if remaining:
+            rows.append(self._fixed_row(remaining))
+        return rows
+
+    def _fixed_row(self, entries: list[dict[str, object]]) -> dict[str, object]:
+        return {
+            'items': entries,
+            'width': sum(int(entry['width']) for entry in entries),
+            'height': max((int(entry['height']) for entry in entries), default=1),
+        }
+
+    def _mode_for_width(self, width: int) -> str:
+        if width >= self._BREAKPOINTS['wide']:
+            return 'wide'
+        if width >= self._BREAKPOINTS['medium']:
+            return 'medium'
+        return 'narrow'
+
+
 class AppButton(tk.Canvas):
     """A small Tk button with the same command/state surface as ttk.Button."""
 
@@ -210,10 +466,12 @@ class AppButton(tk.Canvas):
         padx: int = 10,
         pady: int = 7,
         min_width: int = 0,
+        frame_style: str = 'full',
     ) -> None:
         self.command = command
         self.variant = variant
         self.theme = theme
+        self.frame_style = frame_style
         self._font = font
         self._state = 'normal'
         self._hover = False
@@ -272,13 +530,13 @@ class AppButton(tk.Canvas):
         if self._state == 'disabled':
             return theme['toolbar_alt_bg'], theme['line_number_fg'], theme['toolbar_alt_bg']
         if self.variant == 'primary':
-            return theme['accent_dark'] if self._hover else theme['accent'], '#ffffff', ''
+            return theme['accent_dark'] if self._hover else theme['accent'], '#ffffff', theme['accent_dark']
         if self.variant == 'danger':
-            return theme['stop_bg_active'] if self._hover else theme['stop_bg'], '#ffffff', ''
+            return theme['stop_bg_active'] if self._hover else theme['stop_bg'], '#ffffff', theme['stop_bg_active']
         if self.variant == 'ghost':
             bg = theme['panel_alt_bg'] if self._hover else self._parent_bg()
             fg = theme['accent'] if self._hover else theme['editor_fg']
-            return bg, fg, theme['accent'] if self._hover else bg
+            return bg, fg, theme['accent'] if self._hover else theme['border']
         bg = theme['panel_alt_bg'] if self._hover else self._parent_bg()
         fg = theme['accent'] if self._hover else theme['editor_fg']
         return bg, fg, theme['accent'] if self._hover else theme['border_soft']
@@ -288,7 +546,14 @@ class AppButton(tk.Canvas):
         cursor = '' if self._state == 'disabled' else CONTROL_CURSOR
         tk.Canvas.configure(self, background=self._parent_bg(), cursor=cursor)
         self.delete('all')
-        self._rounded_rect(2, 2, self._width - 2, self._height - 2, 8, fill=bg, outline=border)
+        if self.frame_style == 'underline':
+            self._rounded_rect(2, 2, self._width - 2, self._height - 2, 8, fill=bg, outline=bg)
+            line = self.theme['line_number_fg'] if self._state == 'disabled' else (
+                border if border != bg else self.theme['border']
+            )
+            self.create_line(9, self._height - 5, self._width - 9, self._height - 5, fill=line, width=2)
+        else:
+            self._rounded_rect(2, 2, self._width - 2, self._height - 2, 8, fill=bg, outline=border)
         self.create_text(
             self._width // 2,
             self._height // 2,
@@ -326,6 +591,8 @@ class AppButton(tk.Canvas):
             self.theme = kw.pop('theme')
         if 'variant' in kw:
             self.variant = kw.pop('variant')
+        if 'frame_style' in kw:
+            self.frame_style = kw.pop('frame_style')
         if kw:
             tk.Canvas.configure(self, **kw)
         self._apply_colors()
@@ -337,6 +604,8 @@ class AppButton(tk.Canvas):
             return self._text
         if key == 'state':
             return self._state
+        if key == 'frame_style':
+            return self.frame_style
         return super().cget(key)
 
     def state(self, states=None):
@@ -576,6 +845,7 @@ class EditorTab:
 class PortableIDE(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
+        self._sync_tk_scaling()
         self.title('МШПайтон.Оффлайн')
         self.geometry('1100x700')
         # Fixed turtle canvas size: 400x400 + padding + borders
@@ -612,12 +882,15 @@ class PortableIDE(tk.Tk):
         self.temp_assets: set[str] = set()
         self._waiting_for_input = False
         self.temp_mode_label: tk.Label | None = None
+        self.brand_logo_label: ToolbarLogo | None = None
         self.brand_label: tk.Label | None = None
         self.temp_import_button: AppButton | None = None
         self.temp_show_images_button: AppButton | None = None
+        self.temp_button_group: tk.Frame | None = None
         self.step_next_button: AppButton | None = None
         self._app_buttons: list[AppButton] = []
         self._toolbar_menus: list[tk.Menu] = []
+        self._toolbar_groups: list[tk.Frame] = []
         self._paned_widgets: list[tk.PanedWindow] = []
         self._sash_grips: list[dict[str, object]] = []
 
@@ -633,6 +906,12 @@ class PortableIDE(tk.Tk):
         self.after(250, self._update_sash_grips)
         self.after(750, self._update_sash_grips)
         self.after(100, self._focus_editor)
+
+    def _sync_tk_scaling(self) -> None:
+        try:
+            self.tk.call('tk', 'scaling', self.winfo_fpixels('1i') / 72.0)
+        except Exception:
+            pass
 
     def _maximize_window(self) -> None:
         try:
@@ -835,6 +1114,7 @@ class PortableIDE(tk.Tk):
         padx: int = 12,
     ) -> AppButton:
         button = self._button(master, text, None, variant='ghost', padx=padx)
+        button.configure(frame_style='underline')
         menu = tk.Menu(button, tearoff=0)
         for label, command in items:
             if label is None:
@@ -853,7 +1133,7 @@ class PortableIDE(tk.Tk):
             menu.grab_release()
 
     def _separator(self, master) -> tk.Frame:
-        return tk.Frame(master, width=1, background=self.theme['border'])
+        return tk.Frame(master, width=1, height=24, background=self.theme['border'])
 
     def _create_sash_grip(self, master, item: dict[str, object], orient: str) -> tk.Canvas:
         grip = tk.Canvas(
@@ -1021,6 +1301,8 @@ class PortableIDE(tk.Tk):
                 widget.configure(highlightbackground=theme['border'], highlightcolor=theme['border'])
         for button in getattr(self, '_app_buttons', []):
             button.configure(theme=theme)
+        for group in getattr(self, '_toolbar_groups', []):
+            group.configure(background=theme['toolbar_bg'])
         for sep in getattr(self, '_separators', []):
             sep.configure(background=theme['border'])
         for paned in getattr(self, '_paned_widgets', []):
@@ -1028,8 +1310,10 @@ class PortableIDE(tk.Tk):
         self._update_sash_grips()
         if self.brand_label:
             self.brand_label.configure(background=theme['toolbar_bg'], foreground=theme['editor_fg'])
+        if self.brand_logo_label:
+            self.brand_logo_label.configure(theme=theme)
         if self.temp_mode_label:
-            self.temp_mode_label.configure(background=theme['toolbar_bg'], foreground=theme['editor_fg'])
+            self.temp_mode_label.configure(background=theme['toolbar_alt_bg'], foreground=theme['editor_fg'])
         if hasattr(self, 'run_label'):
             self.run_label.configure(background=theme['toolbar_alt_bg'], foreground=theme['editor_fg'])
         self.console.configure(
@@ -1082,12 +1366,30 @@ class PortableIDE(tk.Tk):
     def _build_ui(self) -> None:
         self._separators: list[tk.Frame] = []
 
-        file_toolbar = self._frame(self, bg_key='toolbar_bg', bordered=True)
+        file_toolbar = FlowToolbar(self, background=self.theme['toolbar_bg'], border=self.theme['border'])
         self.file_toolbar = file_toolbar
-        file_toolbar.pack(fill='x', padx=16, pady=(14, 0), ipady=2)
+        file_toolbar.pack(fill='x', padx=16, pady=(14, 0))
+
+        def toolbar_group(*, slot: str, padx: int = 4, separator: bool = False) -> tk.Frame:
+            group = tk.Frame(file_toolbar, background=self.theme['toolbar_bg'], bd=0, highlightthickness=0)
+            self._toolbar_groups.append(group)
+            separator_line = None
+            if separator:
+                separator_line = tk.Frame(group, width=1, background=self.theme['border'])
+                self._separators.append(separator_line)
+                separator_line.pack(side='left', fill='y', padx=(0, 10), pady=4)
+            content = tk.Frame(group, background=self.theme['toolbar_bg'], bd=0, highlightthickness=0)
+            self._toolbar_groups.append(content)
+            content.pack(side='left')
+            file_toolbar.add(group, padx=padx, pady=6, slot=slot, separator=separator_line)
+            return content
+
         brand = tk.Frame(file_toolbar, background=self.theme['toolbar_bg'])
+        self._toolbar_groups.append(brand)
         self.brand_frame = brand
-        brand.pack(side='left', padx=(10, 10), pady=6)
+        file_toolbar.add(brand, padx=10, pady=6, slot='brand')
+        self.brand_logo_label = ToolbarLogo(brand, theme=self.theme)
+        self.brand_logo_label.pack(side='left', padx=(0, 9))
         self.brand_label = tk.Label(
             brand,
             text='МШПайтон.Оффлайн',
@@ -1095,29 +1397,15 @@ class PortableIDE(tk.Tk):
             background=self.theme['toolbar_bg'],
             foreground=self.theme['editor_fg'],
         )
-        self.brand_label.pack(anchor='w')
-        self.temp_mode_label = tk.Label(
-            file_toolbar,
-            text='Режим: Обычный',
-            font=UI_FONT_BUTTON,
-            background=self.theme['toolbar_bg'],
-            foreground=self.theme['editor_fg'],
-        )
-        self.temp_mode_label.pack(side='right', padx=(10, 10), pady=6)
-        self._button(file_toolbar, 'Новый', self.new_tab, padx=12).pack(
-            side='left', padx=2, pady=5
-        )
-        self._button(file_toolbar, 'Открыть', self.open_file, padx=12).pack(
-            side='left', padx=2, pady=5
-        )
-        self._button(file_toolbar, 'Сохранить', self.save_file, padx=12).pack(
-            side='left', padx=2, pady=5
-        )
-        self._button(file_toolbar, 'Сохранить все', self.save_all, padx=12).pack(
-            side='left', padx=2, pady=5
-        )
+        self.brand_label.pack(side='left')
+
+        file_group = toolbar_group(slot='file')
+        self._button(file_group, 'Новый', self.new_tab, padx=12).pack(side='left', padx=2, pady=0)
+        self._button(file_group, 'Открыть', self.open_file, padx=12).pack(side='left', padx=2, pady=0)
+        self._button(file_group, 'Сохранить', self.save_file, padx=12).pack(side='left', padx=2, pady=0)
+        self._button(file_group, 'Сохранить все', self.save_all, padx=12).pack(side='left', padx=2, pady=0)
         self._toolbar_menu_button(
-            file_toolbar,
+            file_group,
             'Файл',
             [
                 ('Сохранить как...', self.save_file_as),
@@ -1126,59 +1414,64 @@ class PortableIDE(tk.Tk):
                 ('Выход', self.on_exit),
             ],
             padx=12,
-        ).pack(side='left', padx=2, pady=5)
+        ).pack(side='left', padx=2, pady=0)
+
+        tab_group = toolbar_group(slot='tab', separator=True)
+        self._button(
+            tab_group,
+            'Переименовать',
+            self.rename_current_tab,
+            padx=12,
+        ).pack(side='left', padx=2, pady=0)
+        self._button(tab_group, 'Закрыть', self.close_current_tab, padx=12).pack(
+            side='left', padx=2, pady=0
+        )
+
+        project_group = toolbar_group(slot='project', separator=True)
         self._toolbar_menu_button(
-            file_toolbar,
-            'Полезное',
+            project_group,
+            'Проект',
+            [
+                ('Сохранить архив...', self.save_archive),
+                (None, None),
+                ('Экспорт кода проекта', self.export_project_hash),
+                ('Импорт кода проекта', self.import_project_hash),
+            ],
+            padx=12,
+        ).pack(side='left', padx=2, pady=0)
+        self._toolbar_menu_button(
+            project_group,
+            'Инструменты',
             [
                 ('Сделать отступ', self.indent_selection),
                 ('Очистить консоль', self.clear_console),
                 (None, None),
-                ('Экспорт кода проекта', self.export_project_hash),
-                ('Импорт кода проекта', self.import_project_hash),
-                (None, None),
                 ('Настройки', self._open_settings),
             ],
             padx=12,
-        ).pack(side='left', padx=2, pady=5)
-        sep = self._separator(file_toolbar)
-        self._separators.append(sep)
-        sep.pack(side='left', fill='y', padx=6, pady=9)
-        self._button(file_toolbar, 'Архив', self.save_archive, padx=12).pack(
-            side='left', padx=2, pady=5
-        )
-        self._button(
-            file_toolbar,
-            'Переименовать',
-            self.rename_current_tab,
-            padx=12,
-        ).pack(side='left', padx=2, pady=5)
-        sep = self._separator(file_toolbar)
-        self._separators.append(sep)
-        sep.pack(side='left', fill='y', padx=6, pady=9)
-        self._button(file_toolbar, 'Закрыть', self.close_current_tab, variant='ghost', padx=12).pack(
-            side='left', padx=2, pady=5
-        )
-        sep = self._separator(file_toolbar)
-        self._separators.append(sep)
-        sep.pack(side='left', fill='y', padx=6, pady=9)
+        ).pack(side='left', padx=2, pady=0)
+
+        self.temp_button_group = toolbar_group(slot='temp', separator=True)
         self.temp_import_button = self._button(
-            file_toolbar,
+            self.temp_button_group,
             'Импорт картинок',
             self.import_temp_images,
             variant='ghost',
             padx=16,
         )
+        self.temp_import_button.pack(side='left', padx=2, pady=0)
         self.temp_show_images_button = self._button(
-            file_toolbar,
+            self.temp_button_group,
             'Список картинок',
             self.show_temp_images_list,
             variant='ghost',
             padx=16,
         )
-        run_toolbar = self._frame(self, bg_key='toolbar_alt_bg', bordered=True)
+        self.temp_show_images_button.pack(side='left', padx=2, pady=0)
+        file_toolbar.hide(self.temp_button_group)
+        run_toolbar = FlowToolbar(self, background=self.theme['toolbar_alt_bg'], border=self.theme['border'])
         self.run_toolbar = run_toolbar
-        run_toolbar.pack(fill='x', padx=16, pady=(8, 0), ipady=2)
+        run_toolbar.pack(fill='x', padx=16, pady=(8, 0))
         self.run_label = tk.Label(
             run_toolbar,
             text='Запуск',
@@ -1186,7 +1479,7 @@ class PortableIDE(tk.Tk):
             background=self.theme['toolbar_alt_bg'],
             foreground=self.theme['editor_fg'],
         )
-        self.run_label.pack(side='left', padx=(12, 8), pady=7)
+        run_toolbar.add(self.run_label, padx=12, pady=7, rows={'wide': 0, 'medium': 0, 'narrow': 0})
         self.run_button = self._button(
             run_toolbar,
             'Запустить (F5)',
@@ -1194,14 +1487,19 @@ class PortableIDE(tk.Tk):
             variant='primary',
             padx=18,
         )
-        self.run_button.pack(side='left', padx=3, pady=6)
-        self._button(
-            run_toolbar,
-            'Построчно',
-            self.run_current_step,
-            variant='primary',
-            padx=18,
-        ).pack(side='left', padx=3, pady=6)
+        run_toolbar.add(self.run_button, padx=3, pady=6, rows={'wide': 0, 'medium': 0, 'narrow': 0})
+        run_toolbar.add(
+            self._button(
+                run_toolbar,
+                'Построчно',
+                self.run_current_step,
+                variant='primary',
+                padx=18,
+            ),
+            padx=3,
+            pady=6,
+            rows={'wide': 0, 'medium': 0, 'narrow': 1},
+        )
         self.stop_button = self._button(
             run_toolbar,
             'Остановить',
@@ -1209,7 +1507,7 @@ class PortableIDE(tk.Tk):
             variant='danger',
             padx=18,
         )
-        self.stop_button.pack(side='left', padx=3, pady=6)
+        run_toolbar.add(self.stop_button, padx=3, pady=6, rows={'wide': 0, 'medium': 0, 'narrow': 1})
         self.step_next_button = self._button(
             run_toolbar,
             'Далее',
@@ -1217,13 +1515,24 @@ class PortableIDE(tk.Tk):
             variant='ghost',
             padx=16,
         )
+        run_toolbar.add(self.step_next_button, padx=4, pady=6, rows={'wide': 0, 'medium': 0, 'narrow': 1})
+        run_toolbar.hide(self.step_next_button)
 
-        ttk.Checkbutton(
+        self.temp_mode_label = tk.Label(
+            run_toolbar,
+            text='Режим: Обычный',
+            font=UI_FONT_BUTTON,
+            background=self.theme['toolbar_alt_bg'],
+            foreground=self.theme['editor_fg'],
+        )
+        run_toolbar.add(self.temp_mode_label, padx=10, pady=7, rows={'wide': 0, 'medium': 1, 'narrow': 2})
+        theme_toggle = ttk.Checkbutton(
             run_toolbar,
             text='Тёмная тема',
             variable=self.dark_mode,
             command=self._apply_theme,
-        ).pack(side='right', padx=10, pady=7)
+        )
+        run_toolbar.add(theme_toggle, padx=10, pady=7, rows={'wide': 0, 'medium': 1, 'narrow': 2})
 
         self.paned_shell = self._frame(self, bg_key='app_bg')
         self.paned_shell.pack(fill='both', expand=True, padx=16, pady=(12, 16))
@@ -1499,17 +1808,11 @@ class PortableIDE(tk.Tk):
         if self.temp_mode_label:
             status = 'Временные файлы' if active else 'Обычный'
             self.temp_mode_label.configure(text=f'Режим: {status}')
-        if self.temp_import_button:
+        if self.temp_button_group:
             if active:
-                if not self.temp_import_button.winfo_ismapped():
-                    self.temp_import_button.pack(side='left', padx=4, pady=6)
-                if not self.temp_show_images_button.winfo_ismapped():
-                    self.temp_show_images_button.pack(side='left', padx=4, pady=6)
+                self.file_toolbar.show(self.temp_button_group)
             else:
-                if self.temp_import_button.winfo_ismapped():
-                    self.temp_import_button.pack_forget()
-                if self.temp_show_images_button.winfo_ismapped():
-                    self.temp_show_images_button.pack_forget()
+                self.file_toolbar.hide(self.temp_button_group)
         if active:
             self._ensure_temp_session_dir()
             self._autosave_all_tabs()
@@ -2710,11 +3013,9 @@ class PortableIDE(tk.Tk):
         if not self.step_next_button:
             return
         if show:
-            if not self.step_next_button.winfo_ismapped():
-                self.step_next_button.pack(side='left', padx=4, pady=6)
+            self.run_toolbar.show(self.step_next_button)
         else:
-            if self.step_next_button.winfo_ismapped():
-                self.step_next_button.pack_forget()
+            self.run_toolbar.hide(self.step_next_button)
 
     def _run_in_console(self, python_exe: str, script_path: Path, runtime_dir: Path | None) -> None:
         # Очищаем очередь ввода от предыдущей сессии: если старая программа
