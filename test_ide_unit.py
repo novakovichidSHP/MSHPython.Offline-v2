@@ -60,6 +60,14 @@ class FakeStringVar:
         self.val = val
 
 
+class FakeButton:
+    def __init__(self):
+        self.kw = {}
+
+    def configure(self, **kw):
+        self.kw.update(kw)
+
+
 class FakeApp:
     def __init__(self, root=None):
         self.save_before_run_var = FakeStringVar()
@@ -239,6 +247,38 @@ class TestIDEUnit(unittest.TestCase):
         app = FakeApp()
         app.save_before_run_var.set('always')
         self.assertFalse(ide.PortableIDE._temporary_mode_active(app))
+
+    def test_toggle_temp_mode(self):
+        app = FakeApp()
+        app.save_before_run_var.set('ask')
+        app.save_on_run_preference = None
+        app.temp_mode_button = FakeButton()
+        app.temp_import_button = FakeButton()
+        app.temp_show_images_button = FakeButton()
+        app.temp_button_group = None
+        with tempfile.TemporaryDirectory() as tmpdir:
+            app.temp_session_dir = Path(tmpdir) / 'session'
+            app._temporary_mode_active = lambda: ide.PortableIDE._temporary_mode_active(app)
+            app._update_temp_mode_ui = lambda: ide.PortableIDE._update_temp_mode_ui(app)
+            app._apply_save_before_run_setting = lambda: ide.PortableIDE._apply_save_before_run_setting(app)
+            app._ensure_temp_session_dir = lambda: ide.PortableIDE._ensure_temp_session_dir(app)
+            app._autosave_all_tabs = lambda: None
+
+            ide.PortableIDE.toggle_temp_mode(app)
+            self.assertEqual(app.save_before_run_var.get(), 'never')
+            self.assertFalse(app.save_on_run_preference)
+            self.assertEqual(app.temp_mode_button.kw['text'], 'Режим: Временные файлы')
+            self.assertEqual(app.temp_mode_button.kw['variant'], 'primary')
+            self.assertEqual(app.temp_import_button.kw['state'], 'normal')
+            self.assertEqual(app.temp_show_images_button.kw['state'], 'normal')
+
+            ide.PortableIDE.toggle_temp_mode(app)
+            self.assertEqual(app.save_before_run_var.get(), 'always')
+            self.assertTrue(app.save_on_run_preference)
+            self.assertEqual(app.temp_mode_button.kw['text'], 'Режим: Обычный')
+            self.assertEqual(app.temp_mode_button.kw['variant'], 'ghost')
+            self.assertEqual(app.temp_import_button.kw['state'], 'disabled')
+            self.assertEqual(app.temp_show_images_button.kw['state'], 'disabled')
 
     # 10. _temp_name_for_tab (base case)
     def test_temp_name_for_tab(self):

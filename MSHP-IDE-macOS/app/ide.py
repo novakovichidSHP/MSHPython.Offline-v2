@@ -539,7 +539,8 @@ class AppButton(tk.Canvas):
     def _colors(self) -> tuple[str, str, str]:
         theme = self.theme
         if self._state == 'disabled':
-            return theme['toolbar_alt_bg'], theme['line_number_fg'], theme['toolbar_alt_bg']
+            parent_bg = self._parent_bg()
+            return parent_bg, theme['line_number_fg'], parent_bg
         if self.variant == 'primary':
             return theme['accent_dark'] if self._hover else theme['accent'], '#ffffff', theme['accent_dark']
         if self.variant == 'danger':
@@ -895,7 +896,7 @@ class PortableIDE(tk.Tk):
         self.temp_session_dir = RUNTIME_DIR / 'session'
         self.temp_assets: set[str] = set()
         self._waiting_for_input = False
-        self.temp_mode_label: tk.Label | None = None
+        self.temp_mode_button: AppButton | None = None
         self.brand_logo_label: ToolbarLogo | None = None
         self.brand_label: tk.Label | None = None
         self.temp_import_button: AppButton | None = None
@@ -1353,8 +1354,6 @@ class PortableIDE(tk.Tk):
             self.brand_label.configure(background=theme['toolbar_bg'], foreground=theme['editor_fg'])
         if self.brand_logo_label:
             self.brand_logo_label.configure(theme=theme)
-        if self.temp_mode_label:
-            self.temp_mode_label.configure(background=theme['toolbar_alt_bg'], foreground=theme['editor_fg'])
         if hasattr(self, 'run_label'):
             self.run_label.configure(background=theme['toolbar_alt_bg'], foreground=theme['editor_fg'])
         self.console.configure(
@@ -1565,14 +1564,14 @@ class PortableIDE(tk.Tk):
         run_toolbar.add(self.step_next_button, padx=4, pady=6, rows={'wide': 0, 'medium': 0, 'narrow': 1})
         run_toolbar.hide(self.step_next_button)
 
-        self.temp_mode_label = tk.Label(
+        self.temp_mode_button = self._button(
             run_toolbar,
-            text='Режим: Обычный',
-            font=UI_FONT_BUTTON,
-            background=self.theme['toolbar_alt_bg'],
-            foreground=self.theme['editor_fg'],
+            'Режим: Обычный',
+            self.toggle_temp_mode,
+            variant='ghost',
+            padx=12,
         )
-        run_toolbar.add(self.temp_mode_label, padx=10, pady=7, rows={'wide': 0, 'medium': 1, 'narrow': 2})
+        run_toolbar.add(self.temp_mode_button, padx=10, pady=7, rows={'wide': 0, 'medium': 1, 'narrow': 2})
         theme_toggle = ttk.Checkbutton(
             run_toolbar,
             text='Тёмная тема',
@@ -1847,19 +1846,27 @@ class PortableIDE(tk.Tk):
             self.save_on_run_preference = False
         self._update_temp_mode_ui()
 
+    def toggle_temp_mode(self) -> None:
+        self.save_before_run_var.set('always' if self._temporary_mode_active() else 'never')
+        self._apply_save_before_run_setting()
+
     def _temporary_mode_active(self) -> bool:
         return self.save_before_run_var.get() == 'never'
 
     def _update_temp_mode_ui(self) -> None:
         active = self._temporary_mode_active()
-        if self.temp_mode_label:
+        if self.temp_mode_button:
             status = 'Временные файлы' if active else 'Обычный'
-            self.temp_mode_label.configure(text=f'Режим: {status}')
+            self.temp_mode_button.configure(
+                text=f'Режим: {status}',
+                variant='primary' if active else 'ghost',
+            )
         if self.temp_button_group:
-            if active:
-                self.file_toolbar.show(self.temp_button_group)
-            else:
-                self.file_toolbar.hide(self.temp_button_group)
+            self.file_toolbar.show(self.temp_button_group)
+        state = 'normal' if active else 'disabled'
+        for button in (self.temp_import_button, self.temp_show_images_button):
+            if button:
+                button.configure(state=state)
         if active:
             self._ensure_temp_session_dir()
             self._autosave_all_tabs()
@@ -2118,6 +2125,7 @@ class PortableIDE(tk.Tk):
         text.pack(fill='both', expand=True, pady=(6, 8))
         text.insert('1.0', payload)
         text.focus_set()
+        self.bind_text_shortcuts(text)
 
         def _copy_hash() -> None:
             self.clipboard_clear()
@@ -2728,6 +2736,7 @@ class PortableIDE(tk.Tk):
         text.pack(fill='both', expand=True)
         text.insert('1.0', list_str)
         text.configure(state='disabled')
+        self.bind_text_shortcuts(text)
         
         ttk.Button(frame, text='Закрыть', command=dialog.destroy).pack(anchor='e', pady=(12, 0))
 
