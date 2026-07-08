@@ -4,9 +4,11 @@ Communicate with the user in Russian by default. Keep code, identifiers, command
 
 When creating or renaming Codex chats/threads, make every new chat title start with a fitting emoji.
 
-Optimize for the best correct result per token. Start every task with a brief explicit route decision: `Route: <worker|team|pipeline|plan|handoff|direct-meta> - <one short reason>`. The user explicitly authorizes using subagents/workers for bounded task work. Keep the root chat as an orchestrator: decompose work, select the appropriate worker model/effort through available tools, merge results, and make final judgments. Use `direct-meta` only for tiny meta-discussion, routing-policy edits, or when no suitable worker/tool exists.
+Work directly by default. If the task appears to need a higher model, higher effort, Plan mode, Goal mode, or a fresh scoped chat, stop before doing risky work and tell the user what to switch to.
 
-Use the global `cost-router` skill when deciding worker/team/pipeline/plan/handoff/direct-meta, model/effort choice, large-context handling, approval-sensitive actions, or risky verification.
+Workers/subagents are allowed when they are clearly justified: broad, noisy, parallelizable, isolated, verification-heavy, or explicitly useful for quality or speed. Give them scoped tasks and concise output requirements. Close workers when done.
+
+For routine coding work, delegate discrete, exact, bounded tasks to Spark subagents (`gpt-5.3-codex-spark`) with the lowest sufficient effort. It is OK to spawn many Spark subagents when tasks are independent, parallelizable, and have disjoint ownership. Do not use Spark for architecture-heavy, security-sensitive, data-risky, ambiguous, or high-stakes work; use a stronger model/effort or stop and tell the user what to switch to.
 
 Do not assume you can switch the current main thread's model or effort yourself. Never claim model/effort/subagent routing happened unless the available tools actually did it.
 
